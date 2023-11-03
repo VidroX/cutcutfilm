@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "workingDir": "services/gateway/",
+            "type": "npm",
+            "name": "Run Gateway",
+            "command": "run",
+            "scripts": "dev",
+        },
+        {
+            "type": "docker-compose-up",
+            "name": "Run Docker (Dev)",
+            "files": ["docker-compose.dev.yml"],
+        },
+        
+    ]
+}

@@ -1,0 +1,6 @@
+federation_version: =2.5.1
+subgraphs:
+  user:
+    routing_url: {USER_SERVICE_LOCATION}
+    schema:
+      file: services/user/graph/schemas/schema.graphql

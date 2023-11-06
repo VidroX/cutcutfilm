@@ -6,13 +6,15 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: "nginx"
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   rules:
     - host: {{ .Values.host }}
       http:
         paths:
-        - path: {{ .Values.services.user.path }}
-          pathType: Prefix
+        - path: {{ .Values.services.user.path }}(/|$)(.*)
+          pathType: ImplementationSpecific
           backend:
             service:
               name: {{ .Values.services.user.name }}

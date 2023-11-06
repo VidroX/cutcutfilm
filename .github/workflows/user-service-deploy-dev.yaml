@@ -56,6 +56,9 @@ jobs:
 
       - name: Build and push the Docker image
         uses: docker/build-push-action@v4
+        env:
+          GIT_USER: ${{ secrets.GIT_USER }}
+          GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
         with:
           push: true
           context: ${{ env.WORKING_DIRECTORY }}

@@ -27,6 +27,6 @@ USER_SERVICE_LOCATION=$(echo $USER_SERVICE_LOCATION | tr -d '\n\t\r')
 
 sed "s|{USER_SERVICE_LOCATION}|${USER_SERVICE_LOCATION}|g" supergraph-config.yaml > supergraph-config.compiled.yaml
 
-~/.rover/bin/rover supergraph compose --config ./supergraph-config.compiled.yaml --output services/gateway/src/supergraph.graphql
+~/.rover/bin/rover supergraph compose --config ./supergraph-config.compiled.yaml --output services/gateway/supergraph.graphql
 
 rm supergraph-config.compiled.yaml

@@ -24,7 +24,7 @@ const port = process.env.PORT ?? 4000;
 const app = express();
 const httpServer = http.createServer(app);
 
-const supergraphPath = path.join(__dirname, 'supergraph.graphql');
+const supergraphPath = path.join(__dirname, '..', 'supergraph.graphql');
 
 const gateway = new ApolloGateway({
 	async supergraphSdl({ update, healthCheck }) {

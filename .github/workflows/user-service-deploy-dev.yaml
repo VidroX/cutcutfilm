@@ -13,6 +13,7 @@ env:
   IMAGE_NAME: "ghcr.io/vidrox/cutcutfilm:dev"
   RELEASE_NAME: "cutcutfilm-user-dev"
   NAMESPACE: "cutcutfilm-dev"
+  CHART_LOCATION: helm/cutcutfilm-user
 
 jobs:
   compile-schema:
@@ -79,17 +80,11 @@ jobs:
       contents: read
       actions: read
     steps:
+      - uses: actions/checkout@v3
+      
       - name: Deploy to cluster
-        uses: 'vimeda/helm@v1'
+        uses: WyriHaximus/github-action-helm3@v3
         with:
-          helm: 'helm3'
-          release: ${{ env.RELEASE_NAME }}
-          namespace: ${{ env.NAMESPACE }}
-          chart: './helm/cutcutfilm-user'
-          token: '${{ github.token }}'
-          value-files: >-
-            [ 
-              "values-dev.yaml"
-            ]
-        env:
-          KUBECONFIG_FILE: '${{ secrets.KUBECONFIG }}'
+          exec: helm upgrade ${{ env.RELEASE_NAME }} ${{ env.CHART_LOCATION }}/ --install --wait --atomic --namespace=${{ env.NAMESPACE }} --values=${{ env.CHART_LOCATION }}/values-dev.yaml
+          kubeconfig: '${{ secrets.KUBECONFIG }}'
+          overrule_existing_kubeconfig: "true"

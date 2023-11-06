@@ -1,24 +1,39 @@
-name: Build and deploy User Service to Kubernetes cluster (DEV)
+name: Build and deploy Gateway Service to Kubernetes cluster (DEV)
 
 on:
   push:
     branches: ["dev"]
     paths:
-      - "services/user/**"
-      - ".github/workflows/user-service-deploy-dev.yaml"
-      - "helm/cutcutfilm-user/**"
+      - "services/gateway/**"
+      - ".github/workflows/gateway-service-deploy-dev.yaml"
+      - "helm/cutcutfilm-gateway/**"
   workflow_dispatch:
 
 env:
-  WORKING_DIRECTORY: "./services/user"
-  IMAGE_NAME: "ghcr.io/vidrox/cutcutfilm-user:dev"
-  RELEASE_NAME: "cutcutfilm-user"
+  WORKING_DIRECTORY: "./services/gateway"
+  IMAGE_NAME: "ghcr.io/vidrox/cutcutfilm-gateway:dev"
+  RELEASE_NAME: "cutcutfilm-gateway"
   NAMESPACE: "cutcutfilm-dev"
-  CHART_LOCATION: helm/cutcutfilm-user
+  CHART_LOCATION: helm/cutcutfilm-gateway
 
 jobs:
+  compile-schema:
+    name: Compile Schema
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Compile schema
+        env:
+          USER_SERVICE_LOCATION: ${{ vars.USER_SERVICE_LOCATION  }}
+        run: |
+          chmod +x ./compile-schema.sh
+          ./compile-schema.sh
+
   build:
     name: Build
+    needs: compile-schema
     runs-on: ubuntu-latest
     environment: development
     defaults:
@@ -58,7 +73,7 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: build
+    needs: [ compile-schema, build ]
     runs-on: ubuntu-latest
     environment: development
     permissions:

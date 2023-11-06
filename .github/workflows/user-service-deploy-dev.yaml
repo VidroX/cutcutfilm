@@ -6,6 +6,7 @@ on:
     paths:
       - "services/user/**"
       - ".github/workflows/user-service-deploy-dev.yaml"
+      - "helm/cutcutfilm-user/**"
   workflow_dispatch:
 
 env:
@@ -81,7 +82,7 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Deploy to cluster
         uses: WyriHaximus/github-action-helm3@v3
         with:

@@ -18,7 +18,7 @@ spec:
           image: {{ .Values.services.gateway.image }}
           env:
             - name: PORT
-              value: {{ .Values.services.gateway.containerPort }}
+              value: "{{ .Values.services.gateway.containerPort }}"
           ports:
             - containerPort: {{ .Values.services.gateway.containerPort }}
           volumeMounts:

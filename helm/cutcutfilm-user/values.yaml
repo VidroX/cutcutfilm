@@ -1,0 +1,24 @@
+namespace: "cutcutfilm"
+name: "cutcutfilm-user"
+
+host: "cutcutfilm.com"
+
+debug: false
+
+imagePullSecrets: [{ name: cutcutfilm-ghcr }]
+
+persistence:
+  claimName: "cutcutfilm-storage"
+  mountPath: /app/cutcutfilm/data
+
+services:
+  user:
+    replicas: 1
+    path: "/user-service"
+    name: "cutcutfilm-user"
+    image: ""
+    containerPort: 4001
+  userDatabase:
+    name: "user-db-postgresql"
+    secretName: "ccf-secret"
+    port: 5432

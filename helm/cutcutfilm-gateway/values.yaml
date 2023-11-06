@@ -1,0 +1,20 @@
+namespace: "cutcutfilm"
+name: "cutcutfilm-gateway"
+
+host: "cutcutfilm.com"
+
+debug: false
+
+imagePullSecrets: [{ name: cutcutfilm-ghcr }]
+
+persistence:
+  claimName: "cutcutfilm-storage"
+  mountPath: /app/cutcutfilm/data
+
+services:
+  gateway:
+    replicas: 1
+    path: "/"
+    name: "cutcutfilm-gateway"
+    image: ""
+    containerPort: 4000

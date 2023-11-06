@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.services.user.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.services.user.name }}
+  replicas: {{ .Values.services.user.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.services.user.name }}
+    spec:
+      containers:
+        - name: {{ .Values.services.user.name }}
+          image: {{ .Values.services.user.image }}
+          env:
+            - name: PORT
+              value: {{ .Values.services.user.containerPort }}
+            - name: DEBUG
+              value: {{ .Values.debug }}
+            - name: DATABASE_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.name }}-config
+                  key: user_service_database_uri
+            - name: POSTGRESQL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.services.userDatabase.secretName }}
+                  key: user-db-username
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.services.userDatabase.secretName }}
+                  key: user-db-password
+            - name: POSTGRESQL_DATABASE
+              value: {{ .Values.services.userDatabase.name }}
+            - name: POSTGRESQL_PORT_NUMBER
+              value: {{ .Values.services.userDatabase.port }}
+          ports:
+            - containerPort: {{ .Values.services.user.containerPort }}
+          volumeMounts:
+            - name: {{ .Values.persistence.claimName }}
+              mountPath: {{ .Values.persistence.mountPath }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: {{ .Values.persistence.claimName }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.claimName }}

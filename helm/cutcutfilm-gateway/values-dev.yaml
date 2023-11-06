@@ -1,0 +1,20 @@
+namespace: "cutcutfilm-dev"
+name: "cutcutfilm-gateway-dev"
+
+host: "ccf-dev.vidrox.me"
+
+debug: false
+
+imagePullSecrets: [{ name: cutcutfilm-ghcr }]
+
+persistence:
+  claimName: "cutcutfilm-dev-storage"
+  mountPath: /app/cutcutfilm-dev/data
+
+services:
+  gateway:
+    replicas: 1
+    path: "/"
+    name: "cutcutfilm-gateway-dev"
+    image: ""
+    containerPort: 4000

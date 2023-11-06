@@ -1,0 +1,24 @@
+namespace: "cutcutfilm-dev"
+name: "cutcutfilm-user-dev"
+
+host: "ccf-dev.vidrox.me"
+
+debug: false
+
+imagePullSecrets: [{ name: cutcutfilm-ghcr }]
+
+persistence:
+  claimName: "cutcutfilm-dev-storage"
+  mountPath: /app/cutcutfilm-dev/data
+
+services:
+  user:
+    replicas: 1
+    path: "/user-service"
+    name: "cutcutfilm-user-dev"
+    image: ""
+    containerPort: 4001
+  userDatabase:
+    name: "user-db-postgresql"
+    secretName: "ccf-dev-secret"
+    port: 5432

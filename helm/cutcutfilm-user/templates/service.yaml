@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.services.user.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  ports:
+    - port: {{ .Values.services.user.containerPort }}
+      protocol: TCP
+  selector:
+    app: {{ .Values.services.user.name }}

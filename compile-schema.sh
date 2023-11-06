@@ -1,15 +1,12 @@
 #!/bin/bash
-if ! test -f services/gateway/.env; then
-    echo "Please create .env file from .env.example inside services/gateway/"
-    exit 1
-fi
-
 if ! test -f supergraph-config.yaml; then
     echo "Please create supergraph-config.yaml file"
     exit 1
 fi
 
-export $(grep -v '^#' services/gateway/.env | xargs)
+if test -f services/gateway/.env; then
+    export $(grep -v '^#' services/gateway/.env | xargs)
+fi
 
 if ! command -v rover &> /dev/null
 then

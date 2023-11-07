@@ -17,10 +17,14 @@ env:
   CHART_LOCATION: helm/cutcutfilm-gateway
 
 jobs:
-  compile-schema:
-    name: Compile Schema
+  build:
+    name: Build
     runs-on: ubuntu-latest
     environment: development
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
     steps:
       - uses: actions/checkout@v3
 
@@ -30,21 +34,6 @@ jobs:
         run: |
           chmod +x ./compile-schema.sh
           ./compile-schema.sh
-
-  build:
-    name: Build
-    needs: compile-schema
-    runs-on: ubuntu-latest
-    environment: development
-    defaults:
-      run:
-        working-directory: ${{ env.WORKING_DIRECTORY }}
-    permissions:
-      contents: read
-      id-token: write
-      packages: write
-    steps:
-      - uses: actions/checkout@v3
     
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -73,7 +62,7 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: [ compile-schema, build ]
+    needs: build
     runs-on: ubuntu-latest
     environment: development
     permissions:

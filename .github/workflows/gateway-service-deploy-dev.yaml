@@ -86,6 +86,6 @@ jobs:
       - name: Deploy to cluster
         uses: WyriHaximus/github-action-helm3@v3
         with:
-          exec: helm upgrade ${{ env.RELEASE_NAME }} ${{ env.CHART_LOCATION }}/ --install --wait --atomic --namespace=${{ env.NAMESPACE }} --values=${{ env.CHART_LOCATION }}/values-dev.yaml --set services.user.image=${{ env.IMAGE_NAME }}-${{ github.sha }}
+          exec: helm upgrade ${{ env.RELEASE_NAME }} ${{ env.CHART_LOCATION }}/ --install --wait --atomic --namespace=${{ env.NAMESPACE }} --values=${{ env.CHART_LOCATION }}/values-dev.yaml --set services.gateway.image=${{ env.IMAGE_NAME }}-${{ github.sha }}
           kubeconfig: '${{ secrets.KUBECONFIG }}'
           overrule_existing_kubeconfig: "true"

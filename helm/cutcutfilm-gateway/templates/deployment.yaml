@@ -21,6 +21,8 @@ spec:
               value: "{{ .Values.services.gateway.containerPort }}"
             - name: DEBUG
               value: "{{ .Values.debug }}"
+            - name: NODE_ENV
+              value: "production"
           ports:
             - containerPort: {{ .Values.services.gateway.containerPort }}
           volumeMounts:

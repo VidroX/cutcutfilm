@@ -19,6 +19,8 @@ spec:
           env:
             - name: PORT
               value: "{{ .Values.services.gateway.containerPort }}"
+            - name: DEBUG
+              value: "{{ .Values.debug }}"
           ports:
             - containerPort: {{ .Values.services.gateway.containerPort }}
           volumeMounts:

@@ -11,15 +11,20 @@ import { expressMiddleware } from '@apollo/server/express4';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
+import {
+	ApolloServerPluginInlineTraceDisabled,
+	ApolloServerPluginUsageReportingDisabled,
+} from '@apollo/server/plugin/disabled';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({
-	path: '../.env',
+	path: path.join(__dirname, '..', '.env'),
 });
 
 const port = process.env.PORT ?? 4000;
+const debug = (process.env.DEBUG ?? 'false') === 'true';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -27,6 +32,7 @@ const httpServer = http.createServer(app);
 const supergraphPath = path.join(__dirname, '..', 'supergraph.graphql');
 
 const gateway = new ApolloGateway({
+	debug,
 	async supergraphSdl({ update, healthCheck }) {
 		const watcher = watch(supergraphPath);
 
@@ -54,8 +60,12 @@ const gateway = new ApolloGateway({
 
 const server = new ApolloServer({
 	gateway,
-	includeStacktraceInErrorResponses: false,
-	plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+	includeStacktraceInErrorResponses: debug,
+	plugins: [
+		ApolloServerPluginUsageReportingDisabled(),
+		ApolloServerPluginInlineTraceDisabled(),
+		ApolloServerPluginDrainHttpServer({ httpServer }),
+	],
 });
 
 await server.start();

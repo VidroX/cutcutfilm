@@ -13,6 +13,7 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import {
 	ApolloServerPluginInlineTraceDisabled,
+	ApolloServerPluginLandingPageDisabled,
 	ApolloServerPluginUsageReportingDisabled,
 } from '@apollo/server/plugin/disabled';
 
@@ -62,6 +63,7 @@ const server = new ApolloServer({
 	gateway,
 	includeStacktraceInErrorResponses: debug,
 	plugins: [
+		ApolloServerPluginLandingPageDisabled(),
 		ApolloServerPluginUsageReportingDisabled(),
 		ApolloServerPluginInlineTraceDisabled(),
 		ApolloServerPluginDrainHttpServer({ httpServer }),

@@ -8,6 +8,15 @@ on:
       - ".github/workflows/gateway-service-deploy-dev.yaml"
       - "helm/cutcutfilm-gateway/**"
   workflow_call:
+    secrets:
+      GIT_REGISTRY_TOKEN:
+        required: true
+      GIT_USER:
+        required: true
+      GIT_TOKEN:
+        required: true
+      KUBECONFIG:
+        required: true
   workflow_dispatch:
 
 env:

@@ -76,6 +76,11 @@ jobs:
           overrule_existing_kubeconfig: "true"
   
   rebuild-gateway:
-    name: Re-build and deploy Gateway Service
+    name: Gateway Service
     needs: deploy
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      packages: write
     uses: ./.github/workflows/gateway-service-deploy-dev.yaml

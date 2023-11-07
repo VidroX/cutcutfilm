@@ -16,6 +16,7 @@ import {
 	ApolloServerPluginUsageReportingDisabled,
 } from '@apollo/server/plugin/disabled';
 import { ApolloServerPluginInlineTrace } from '@apollo/server/plugin/inlineTrace';
+import responseCachePlugin from '@apollo/server-plugin-response-cache';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,7 +56,11 @@ const server = new ApolloServer({
 	nodeEnv,
 	includeStacktraceInErrorResponses: debug,
 	introspection: debug,
-	plugins: [...debugPlugins, ApolloServerPluginDrainHttpServer({ httpServer })],
+	plugins: [
+		...debugPlugins,
+		responseCachePlugin(),
+		ApolloServerPluginDrainHttpServer({ httpServer }),
+	],
 });
 
 await server.start();

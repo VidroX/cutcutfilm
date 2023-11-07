@@ -1,4 +1,4 @@
-name: Build and deploy User Service to Kubernetes cluster (DEV)
+name: User Service Build and Deploy (DEV)
 
 on:
   push:
@@ -74,3 +74,8 @@ jobs:
           exec: helm upgrade ${{ env.RELEASE_NAME }} ${{ env.CHART_LOCATION }}/ --install --wait --atomic --namespace=${{ env.NAMESPACE }} --values=${{ env.CHART_LOCATION }}/values-dev.yaml --set services.user.image=${{ env.IMAGE_NAME }}-${{ github.sha }}
           kubeconfig: '${{ secrets.KUBECONFIG }}'
           overrule_existing_kubeconfig: "true"
+  
+  rebuild-gateway:
+    name: Re-build and deploy Gateway Service
+    needs: deploy
+    uses: ./.github/workflows/gateway-service-deploy-dev.yaml

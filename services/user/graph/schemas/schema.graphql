@@ -2,15 +2,7 @@ extend schema
   @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key"])
 
 type Todo {
-  id: ID!
   text: String!
-  done: Boolean!
-  user: User!
-}
-
-type User {
-  id: ID!
-  name: String!
 }
 
 type Query {
@@ -19,7 +11,6 @@ type Query {
 
 input NewTodo {
   text: String!
-  userId: String!
 }
 
 type Mutation {

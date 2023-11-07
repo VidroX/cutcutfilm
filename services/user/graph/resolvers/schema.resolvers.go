@@ -6,20 +6,22 @@ package graph
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/VidroX/cutcutfilm/services/user/graph"
 	"github.com/VidroX/cutcutfilm/services/user/graph/model"
 )
 
 // CreateTodo is the resolver for the createTodo field.
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
+	return &model.Todo{Text: "test"}, nil
 }
 
 // Todos is the resolver for the todos field.
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
+	return []*model.Todo{
+		{Text: "test"},
+		{Text: "test2"},
+		{Text: "test3"},
+	}, nil
 }
 
 // Mutation returns graph.MutationResolver implementation.

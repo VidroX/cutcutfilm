@@ -1,4 +1,4 @@
-name: Build and deploy Gateway Service to Kubernetes cluster (DEV)
+name: Gateway Service Build and Deploy (DEV)
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - "services/gateway/**"
       - ".github/workflows/gateway-service-deploy-dev.yaml"
       - "helm/cutcutfilm-gateway/**"
+  workflow_call:
   workflow_dispatch:
 
 env:

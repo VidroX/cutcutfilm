@@ -4,6 +4,7 @@ name: "cutcutfilm-gateway"
 host: "cutcutfilm.com"
 
 debug: false
+environmentType: "production"
 
 imagePullSecrets: [{ name: cutcutfilm-ghcr }]
 

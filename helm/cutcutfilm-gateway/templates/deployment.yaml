@@ -23,6 +23,8 @@ spec:
               value: "{{ .Values.debug }}"
             - name: NODE_ENV
               value: "production"
+            - name: ENVIRONMENT_TYPE
+              value: "{{ .Values.environmentType }}"
           ports:
             - containerPort: {{ .Values.services.gateway.containerPort }}
           volumeMounts:

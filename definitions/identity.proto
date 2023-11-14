@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option go_package = "github.com/VidroX/cutcutfilm/services/identity/identity";
+
+package identity;
+
+service Identity {
+  rpc IssueToken (TokenRequest) returns (TokenReply) {}
+}
+
+enum TokenType {
+  Access = 0;
+  Refresh = 1;
+}
+
+message TokenRequest {}
+
+message TokenReply {
+  string token = 1;
+}

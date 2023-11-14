@@ -15,11 +15,8 @@ import {
 } from '@apollo/server/plugin/disabled';
 import { ApolloServerPluginInlineTrace } from '@apollo/server/plugin/inlineTrace';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
-import { decodeToken, ensureKeysPresent } from './jwt/jwt.ts';
 import { rootDir } from './path_utils.ts';
 import { DEBUG, NODE_ENV, PORT } from './environment.ts';
-
-ensureKeysPresent();
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -85,7 +82,7 @@ app.use(
 	expressMiddleware(server, {
 		context: async ({ req }) => {
 			const token = (req.headers.authorization ?? '').trim().replace('Bearer ', '');
-			const tokenClaims = await decodeToken(token);
+			const tokenClaims = token; //await decodeToken(token);
 
 			return { tokenClaims };
 		},

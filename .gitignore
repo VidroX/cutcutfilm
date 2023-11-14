@@ -25,6 +25,3 @@
 **/*.env
 
 .idea
-
-**/supergraph.graphql
-**/database_data

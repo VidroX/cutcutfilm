@@ -24,7 +24,7 @@ spec:
             - name: DATABASE_URI
               valueFrom:
                 configMapKeyRef:
-                  name: {{ .Values.name }}-config
+                  name: {{ .Values.services.user.name }}-config
                   key: user_service_database_uri
             - name: POSTGRESQL_USERNAME
               valueFrom:
@@ -40,6 +40,16 @@ spec:
               value: "{{ .Values.services.userDatabase.name }}"
             - name: POSTGRESQL_PORT_NUMBER
               value: "{{ .Values.services.userDatabase.port }}"
+            - name: IDENTITY_SERVICE_LOCATION
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.user.name }}-config
+                  key: identity_service_location
+            - name: IDENTITY_SERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.services.user.secretName }}
+                  key: identity-api-key
           ports:
             - containerPort: {{ .Values.services.user.containerPort }}
           volumeMounts:

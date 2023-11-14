@@ -17,5 +17,7 @@ services:
     replicas: 1
     path: "/"
     name: "cutcutfilm-gateway-dev"
+    identityServiceName: "cutcutfilm-identity-dev"
+    identityServicePort: 4002
     image: ""
     containerPort: 4000

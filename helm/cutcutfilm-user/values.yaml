@@ -16,6 +16,8 @@ services:
     replicas: 1
     path: "/user-service"
     name: "cutcutfilm-user"
+    identityServiceName: "cutcutfilm-identity"
+    identityServicePort: 4002
     image: ""
     containerPort: 4001
   userDatabase:

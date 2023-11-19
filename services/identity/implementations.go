@@ -4,19 +4,20 @@ import (
 	"context"
 	"slices"
 
+	"connectrpc.com/connect"
 	nebulaErrors "github.com/VidroX/cutcutfilm-shared/errors"
 	"github.com/VidroX/cutcutfilm-shared/permissions"
 	"github.com/VidroX/cutcutfilm-shared/translator"
 	"github.com/VidroX/cutcutfilm-shared/utils"
 	"github.com/VidroX/cutcutfilm/services/identity/core/jwx"
-	pb "github.com/VidroX/cutcutfilm/services/identity/identity"
+	pb "github.com/VidroX/cutcutfilm/services/identity/proto/identity/v1"
 	"github.com/VidroX/cutcutfilm/services/identity/resources"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func (s *server) IssueTokens(ctx context.Context, in *pb.IssueTokensRequest) (*pb.MultipleTokensReply, error) {
+func (s *server) IssueTokens(ctx context.Context, req *connect.Request[pb.IssueTokensRequest]) (*connect.Response[pb.IssueTokensResponse], error) {
 	localizer, ok := ctx.Value(translator.Key).(*translator.NebulaLocalizer)
 	if !ok || localizer == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -26,12 +27,12 @@ func (s *server) IssueTokens(ctx context.Context, in *pb.IssueTokensRequest) (*p
 
 	if !ok2 || userTokenType == nil || *userTokenType != jwx.TokenTypeApplicationRequest {
 		return nil, status.Errorf(
-			codes.Internal,
+			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
 		)
 	}
 
-	userId := in.GetUserId()
+	userId := req.Msg.GetUserId()
 	_, err := uuid.Parse(userId)
 
 	if utils.UtilString(userId).IsEmpty() || err != nil {
@@ -44,13 +45,13 @@ func (s *server) IssueTokens(ctx context.Context, in *pb.IssueTokensRequest) (*p
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
-	return &pb.MultipleTokensReply{
+	return connect.NewResponse(&pb.IssueTokensResponse{
 		AccessToken:  jwx.CreateToken(jwx.TokenTypeAccess, &userId, permissionsSlice),
 		RefreshToken: jwx.CreateToken(jwx.TokenTypeRefresh, &userId, nil),
-	}, nil
+	}), nil
 }
 
-func (s *server) RefreshToken(ctx context.Context, in *pb.TokenRequest) (*pb.TokenReply, error) {
+func (s *server) RefreshToken(ctx context.Context, req *connect.Request[pb.RefreshTokenRequest]) (*connect.Response[pb.RefreshTokenResponse], error) {
 	localizer, ok := ctx.Value(translator.Key).(*translator.NebulaLocalizer)
 	if !ok || localizer == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -61,7 +62,7 @@ func (s *server) RefreshToken(ctx context.Context, in *pb.TokenRequest) (*pb.Tok
 
 	if !ok || !ok2 || userTokenType == nil || *userTokenType != jwx.TokenTypeRefresh {
 		return nil, status.Errorf(
-			codes.Internal,
+			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
 		)
 	}
@@ -72,10 +73,12 @@ func (s *server) RefreshToken(ctx context.Context, in *pb.TokenRequest) (*pb.Tok
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
-	return &pb.TokenReply{Token: jwx.CreateToken(jwx.TokenTypeAccess, &userId, permissionsSlice)}, nil
+	return connect.NewResponse(&pb.RefreshTokenResponse{
+		Token: jwx.CreateToken(jwx.TokenTypeAccess, &userId, permissionsSlice),
+	}), nil
 }
 
-func (s *server) SetUserPermissions(ctx context.Context, in *pb.SetUserPermissionsRequest) (*pb.SetUserPermissionsReply, error) {
+func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb.SetUserPermissionsRequest]) (*connect.Response[pb.SetUserPermissionsResponse], error) {
 	localizer, ok := ctx.Value(translator.Key).(*translator.NebulaLocalizer)
 	if !ok || localizer == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -87,14 +90,14 @@ func (s *server) SetUserPermissions(ctx context.Context, in *pb.SetUserPermissio
 
 	if !ok || !ok2 || !ok3 || userPermissions == nil || userTokenType == nil || *userTokenType != jwx.TokenTypeAccess {
 		return nil, status.Errorf(
-			codes.Internal,
+			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
 		)
 	}
 
-	permissionsSlice := mapStringPermissionsToPermissions(in.GetPermissions())
+	permissionsSlice := mapStringPermissionsToPermissions(req.Msg.GetPermissions())
 
-	requestedUserId := in.GetUserId()
+	requestedUserId := req.Msg.GetUserId()
 	if utils.UtilString(requestedUserId).IsEmpty() {
 		requestedUserId = userId
 	}
@@ -140,13 +143,13 @@ func (s *server) SetUserPermissions(ctx context.Context, in *pb.SetUserPermissio
 		Permissions: mapPermissionsToProtoPermissions(permissionsSlice),
 	}
 
-	return &pb.SetUserPermissionsReply{
+	return connect.NewResponse(&pb.SetUserPermissionsResponse{
 		Token: jwx.CreateToken(*userTokenType, &requestedUserId, permissionsSlice),
 		User:  user,
-	}, nil
+	}), nil
 }
 
-func (s *server) GetUserPermissions(ctx context.Context, in *pb.GetUserPermissionsRequest) (*pb.UserWithPermissions, error) {
+func (s *server) GetUserPermissions(ctx context.Context, req *connect.Request[pb.GetUserPermissionsRequest]) (*connect.Response[pb.GetUserPermissionsResponse], error) {
 	localizer, ok := ctx.Value(translator.Key).(*translator.NebulaLocalizer)
 	if !ok || localizer == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -158,12 +161,12 @@ func (s *server) GetUserPermissions(ctx context.Context, in *pb.GetUserPermissio
 
 	if !ok || !ok2 || userTokenType == nil || *userTokenType != jwx.TokenTypeAccess {
 		return nil, status.Errorf(
-			codes.Internal,
+			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
 		)
 	}
 
-	requestedUserId := in.GetUserId()
+	requestedUserId := req.Msg.GetUserId()
 	if utils.UtilString(requestedUserId).IsEmpty() {
 		requestedUserId = userId
 	}
@@ -193,10 +196,10 @@ func (s *server) GetUserPermissions(ctx context.Context, in *pb.GetUserPermissio
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
-	return &pb.UserWithPermissions{
+	return connect.NewResponse(&pb.GetUserPermissionsResponse{
 		UserId:      requestedUserId,
 		Permissions: mapPermissionsToProtoPermissions(permissionsSlice),
-	}, nil
+	}), nil
 }
 
 func mapPermissionsToProtoPermissions(permissionsSlice []permissions.Permission) []*pb.Permission {

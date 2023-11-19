@@ -4,15 +4,21 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
 
+	"connectrpc.com/grpcreflect"
+	"github.com/VidroX/cutcutfilm-shared/utils"
+
+	"connectrpc.com/connect"
 	"github.com/VidroX/cutcutfilm/services/identity/core/database"
 	"github.com/VidroX/cutcutfilm/services/identity/core/repositories"
 	"github.com/VidroX/cutcutfilm/services/identity/core/services"
 	"github.com/google/uuid"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"github.com/VidroX/cutcutfilm/services/identity/resources"
 
@@ -20,18 +26,15 @@ import (
 	"github.com/VidroX/cutcutfilm-shared/translator"
 	"github.com/VidroX/cutcutfilm/services/identity/core/environment"
 	"github.com/VidroX/cutcutfilm/services/identity/core/jwx"
-	pb "github.com/VidroX/cutcutfilm/services/identity/identity"
-	"google.golang.org/grpc"
+	"github.com/VidroX/cutcutfilm/services/identity/proto/identity/v1/identityv1connect"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
 
 const defaultPort = "4002"
 
 type server struct {
-	pb.UnimplementedIdentityServer
+	identityv1connect.UnimplementedIdentityServiceHandler
 	repositories *repositories.Repositories
 	services     *services.Services
 }
@@ -47,6 +50,8 @@ func main() {
 		PrivateKey: &private,
 		PublicKey:  &public,
 	}
+
+	fmt.Println(jwx.CreateToken(jwx.TokenTypeApplicationRequest, nil, nil))
 
 	db := initDatabase()
 	initServer(debug, db)
@@ -69,65 +74,61 @@ func initServer(debug bool, db *database.NebulaDb) {
 		port = defaultPort
 	}
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-
-	s := grpc.NewServer(
-		grpc.UnaryInterceptor(serverInterceptor),
-	)
+	mux := http.NewServeMux()
+	address := fmt.Sprintf(":%s", port)
 
 	repos := repositories.Init(&repositories.RepositoryDependencies{Database: db})
-	pb.RegisterIdentityServer(s, &server{
-		repositories: repos,
-		services:     services.Init(&services.ServiceDependencies{Repositories: repos}),
-	})
+	path, handler := identityv1connect.NewIdentityServiceHandler(
+		&server{
+			repositories: repos,
+			services:     services.Init(&services.ServiceDependencies{Repositories: repos}),
+		},
+		connect.WithInterceptors(
+			connect.UnaryInterceptorFunc(serverInterceptor),
+		),
+	)
+
+	mux.Handle(path, handler)
 
 	if debug {
-		reflection.Register(s)
+		reflector := grpcreflect.NewStaticReflector(
+			"identity.v1.IdentityService",
+		)
+		mux.Handle(grpcreflect.NewHandlerV1(reflector))
+		mux.Handle(grpcreflect.NewHandlerV1Alpha(reflector))
 	}
 
-	log.Printf("server listening at %v", lis.Addr())
+	fmt.Println("... Listening on", address)
+	err := http.ListenAndServe(address, h2c.NewHandler(mux, &http2.Server{}))
 
-	if err := s.Serve(lis); err != nil {
+	if err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
 }
 
-func serverInterceptor(
-	ctx context.Context,
-	req interface{},
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (interface{}, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
+func serverInterceptor(next connect.UnaryFunc) connect.UnaryFunc {
+	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+		ctx, err := environmentInterceptor(ctx, request.Header())
 
-	if !ok {
-		return nil, status.Errorf(codes.InvalidArgument, "Retrieving metadata has failed")
+		if err != nil {
+			return nil, err
+		}
+
+		ctx, err = authInterceptor(ctx, request.Header())
+
+		if err != nil {
+			return nil, err
+		}
+
+		return next(ctx, request)
 	}
-
-	ctx, err := environmentInterceptor(ctx, md)
-
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, err = authInterceptor(ctx, md)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return handler(ctx, req)
 }
 
-func environmentInterceptor(ctx context.Context, md metadata.MD) (context.Context, error) {
-	lang, ok := md["accept-language"]
+func environmentInterceptor(ctx context.Context, headers http.Header) (context.Context, error) {
+	lang := headers.Get("accept-language")
 	normalizedLang := "en"
-	if ok && len(lang) >= 0 {
-		normalizedLang = lang[0]
+	if len(lang) >= 0 {
+		normalizedLang = lang
 	}
 
 	nebulaLocalizer := translator.Init(
@@ -142,14 +143,13 @@ func environmentInterceptor(ctx context.Context, md metadata.MD) (context.Contex
 	return ctx, nil
 }
 
-func authInterceptor(ctx context.Context, md metadata.MD) (context.Context, error) {
+func authInterceptor(ctx context.Context, headers http.Header) (context.Context, error) {
 	localizer, ok := ctx.Value(translator.Key).(*translator.NebulaLocalizer)
 	if !ok {
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	apiKey, ok := md["x-api-key"]
-	if !ok || apiKey[0] != os.Getenv(environment.KeysAPIKey) {
+	if headers.Get("x-api-key") != os.Getenv(environment.KeysAPIKey) {
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.
@@ -158,8 +158,8 @@ func authInterceptor(ctx context.Context, md metadata.MD) (context.Context, erro
 		)
 	}
 
-	authToken, ok := md["authorization"]
-	if !ok {
+	authToken := headers.Get("authorization")
+	if utils.UtilString(authToken).IsEmpty() {
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.
@@ -169,7 +169,7 @@ func authInterceptor(ctx context.Context, md metadata.MD) (context.Context, erro
 	}
 
 	searchRegex := regexp.MustCompile("(?i)" + "Bearer")
-	token := strings.TrimSpace(searchRegex.ReplaceAllString(authToken[0], ""))
+	token := strings.TrimSpace(searchRegex.ReplaceAllString(authToken, ""))
 
 	validatedToken, tokenType := jwx.ValidateToken(token)
 

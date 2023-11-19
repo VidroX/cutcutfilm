@@ -1,8 +1,6 @@
 namespace: "cutcutfilm"
 name: "cutcutfilm-user"
 
-host: "cutcutfilm.com"
-
 debug: false
 
 imagePullSecrets: [{ name: cutcutfilm-ghcr }]
@@ -14,7 +12,6 @@ persistence:
 services:
   user:
     replicas: 1
-    path: "/user-service"
     name: "cutcutfilm-user"
     image: ""
     containerPort: 4001

@@ -4,6 +4,8 @@
 package tools
 
 import (
+	_ "connectrpc.com/connect"
+	_ "connectrpc.com/grpcreflect"
 	_ "github.com/VidroX/cutcutfilm-shared/errors"
 	_ "github.com/VidroX/cutcutfilm-shared/permissions"
 	_ "github.com/VidroX/cutcutfilm-shared/translator"

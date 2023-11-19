@@ -1,6 +1,7 @@
 package permissions
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
@@ -24,6 +25,10 @@ func (repo *PermissionsRepositoryGorm) GetUserPermissions(id string) ([]permissi
 		return nil, err
 	}
 
+	if len(permissionsModelList) < 1 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
 	var permissionsList []permissions.Permission
 	for _, permissionModel := range permissionsModelList {
 		permissionsList = append(permissionsList, permissions.Permission{
@@ -38,12 +43,14 @@ func (repo *PermissionsRepositoryGorm) GetUserPermissions(id string) ([]permissi
 func (repo *PermissionsRepositoryGorm) SetUserPermissions(id string, permissionSlice []permissions.Permission) error {
 	userPermissions, err := repo.GetUserPermissions(id)
 
-	if err != nil {
-		return err
-	}
-
 	permissionsToDelete := getPermissionActionsToDelete(userPermissions, permissionSlice)
 	permissionsToAdd := getDatabasePermissionDifference(id, permissionSlice, userPermissions)
+
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return repo.database.Create(permissionsToAdd).Error
+	} else if err != nil {
+		return err
+	}
 
 	if len(permissionsToDelete) < 1 && len(permissionsToAdd) < 1 {
 		return nil

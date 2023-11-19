@@ -1,15 +1,13 @@
 package jwx
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/VidroX/cutcutfilm/services/identity/core"
-
+	"github.com/VidroX/cutcutfilm-shared/permissions"
 	"github.com/VidroX/cutcutfilm/services/identity/core/environment"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -18,13 +16,15 @@ import (
 type TokenType string
 
 const (
-	TokenTypeAccess  TokenType = "access"
-	TokenTypeRefresh TokenType = "refresh"
+	TokenTypeAccess             TokenType = "access"
+	TokenTypeRefresh            TokenType = "refresh"
+	TokenTypeApplicationRequest TokenType = "application_request"
 )
 
 var AllTokenType = []TokenType{
 	TokenTypeAccess,
 	TokenTypeRefresh,
+	TokenTypeApplicationRequest,
 }
 
 func (e TokenType) IsValid() bool {
@@ -39,8 +39,8 @@ func (e TokenType) String() string {
 	return string(e)
 }
 
-func CreateToken(tokenType TokenType, userId string, permissions []core.Permission) string {
-	if tokenType != TokenTypeAccess && tokenType != TokenTypeRefresh {
+func CreateToken(tokenType TokenType, userId *string, permissionsSlice []permissions.Permission) string {
+	if tokenType != TokenTypeAccess && tokenType != TokenTypeRefresh && tokenType != TokenTypeApplicationRequest {
 		tokenType = TokenTypeAccess
 	}
 
@@ -48,17 +48,24 @@ func CreateToken(tokenType TokenType, userId string, permissions []core.Permissi
 
 	builder := jwt.NewBuilder().
 		Claim("typ", tokenType).
-		Claim("permissions", BuildPermissionsString(permissions)).
 		Issuer(os.Getenv(environment.KeysTokenIssuer)).
-		IssuedAt(issueTime).
-		Subject(userId)
+		Audience([]string{os.Getenv(environment.KeysTokenIssuer)}).
+		IssuedAt(issueTime)
 
-	builder = builder.Expiration(issueTime.Add(time.Minute * 1))
+	if tokenType == TokenTypeRefresh && userId != nil {
+		builder = builder.Expiration(issueTime.Add(time.Hour * 24 * 7)).Subject(*userId)
+	} else if tokenType == TokenTypeAccess && userId != nil {
+		builder = builder.Expiration(issueTime.Add(time.Minute*15)).
+			Subject(*userId).
+			Claim("permissions", permissions.BuildPermissionsString(permissionsSlice))
+	} else {
+		builder = builder.Expiration(issueTime.Add(time.Minute))
+	}
 
 	tok, err := builder.Build()
 
 	if err != nil {
-		log.Printf("Failed to build token for user %s: %s\n", userId, err)
+		log.Printf("Failed to build token: %s\n", err)
 		return ""
 	}
 
@@ -76,25 +83,11 @@ func CreateToken(tokenType TokenType, userId string, permissions []core.Permissi
 	signed, err := jwt.Sign(tok, jwt.WithKey(jwa.ES512, rawPrivateKey))
 
 	if err != nil {
-		log.Printf("Failed to sign token for user %s: %s\n", userId, err)
+		log.Printf("Failed to sign token: %s\n", err)
 		return ""
 	}
 
 	return string(signed)
-}
-
-func BuildPermissionsString(permissions []core.Permission) string {
-	var sb strings.Builder
-
-	for index, permission := range permissions {
-		if index < len(permissions)-1 {
-			sb.WriteString(fmt.Sprintf("%s,", permission.Name))
-		} else {
-			sb.WriteString(fmt.Sprintf("%s", permission.Name))
-		}
-	}
-
-	return sb.String()
 }
 
 func ValidateToken(token string) (jwt.Token, *TokenType) {
@@ -123,7 +116,8 @@ func ValidateToken(token string) (jwt.Token, *TokenType) {
 	stringTokenType, ok2 := tokenType.(string)
 
 	isValidTokenType := ok2 && (strings.EqualFold(stringTokenType, TokenTypeAccess.String()) ||
-		strings.EqualFold(stringTokenType, TokenTypeRefresh.String()))
+		strings.EqualFold(stringTokenType, TokenTypeRefresh.String()) ||
+		strings.EqualFold(stringTokenType, TokenTypeApplicationRequest.String()))
 	isProperToken := ok && isValidTokenType
 
 	if !isProperToken {
@@ -132,10 +126,6 @@ func ValidateToken(token string) (jwt.Token, *TokenType) {
 
 	audience, ok := verifiedToken.Get("aud")
 	convertedAudience, ok2 := audience.([]string)
-
-	if !ok || !ok2 {
-		return nil, nil
-	}
 
 	if !slices.Contains(convertedAudience, os.Getenv(environment.KeysTokenIssuer)) {
 		return nil, nil

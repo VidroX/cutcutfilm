@@ -19,14 +19,20 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Identity_IssueToken_FullMethodName = "/identity.Identity/IssueToken"
+	Identity_IssueTokens_FullMethodName        = "/identity.Identity/IssueTokens"
+	Identity_RefreshToken_FullMethodName       = "/identity.Identity/RefreshToken"
+	Identity_SetUserPermissions_FullMethodName = "/identity.Identity/SetUserPermissions"
+	Identity_GetUserPermissions_FullMethodName = "/identity.Identity/GetUserPermissions"
 )
 
 // IdentityClient is the client API for Identity service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type IdentityClient interface {
-	IssueToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenReply, error)
+	IssueTokens(ctx context.Context, in *IssueTokensRequest, opts ...grpc.CallOption) (*MultipleTokensReply, error)
+	RefreshToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenReply, error)
+	SetUserPermissions(ctx context.Context, in *SetUserPermissionsRequest, opts ...grpc.CallOption) (*SetUserPermissionsReply, error)
+	GetUserPermissions(ctx context.Context, in *GetUserPermissionsRequest, opts ...grpc.CallOption) (*UserWithPermissions, error)
 }
 
 type identityClient struct {
@@ -37,9 +43,36 @@ func NewIdentityClient(cc grpc.ClientConnInterface) IdentityClient {
 	return &identityClient{cc}
 }
 
-func (c *identityClient) IssueToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenReply, error) {
+func (c *identityClient) IssueTokens(ctx context.Context, in *IssueTokensRequest, opts ...grpc.CallOption) (*MultipleTokensReply, error) {
+	out := new(MultipleTokensReply)
+	err := c.cc.Invoke(ctx, Identity_IssueTokens_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityClient) RefreshToken(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenReply, error) {
 	out := new(TokenReply)
-	err := c.cc.Invoke(ctx, Identity_IssueToken_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Identity_RefreshToken_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityClient) SetUserPermissions(ctx context.Context, in *SetUserPermissionsRequest, opts ...grpc.CallOption) (*SetUserPermissionsReply, error) {
+	out := new(SetUserPermissionsReply)
+	err := c.cc.Invoke(ctx, Identity_SetUserPermissions_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityClient) GetUserPermissions(ctx context.Context, in *GetUserPermissionsRequest, opts ...grpc.CallOption) (*UserWithPermissions, error) {
+	out := new(UserWithPermissions)
+	err := c.cc.Invoke(ctx, Identity_GetUserPermissions_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +83,10 @@ func (c *identityClient) IssueToken(ctx context.Context, in *TokenRequest, opts 
 // All implementations must embed UnimplementedIdentityServer
 // for forward compatibility
 type IdentityServer interface {
-	IssueToken(context.Context, *TokenRequest) (*TokenReply, error)
+	IssueTokens(context.Context, *IssueTokensRequest) (*MultipleTokensReply, error)
+	RefreshToken(context.Context, *TokenRequest) (*TokenReply, error)
+	SetUserPermissions(context.Context, *SetUserPermissionsRequest) (*SetUserPermissionsReply, error)
+	GetUserPermissions(context.Context, *GetUserPermissionsRequest) (*UserWithPermissions, error)
 	mustEmbedUnimplementedIdentityServer()
 }
 
@@ -58,8 +94,17 @@ type IdentityServer interface {
 type UnimplementedIdentityServer struct {
 }
 
-func (UnimplementedIdentityServer) IssueToken(context.Context, *TokenRequest) (*TokenReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method IssueToken not implemented")
+func (UnimplementedIdentityServer) IssueTokens(context.Context, *IssueTokensRequest) (*MultipleTokensReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method IssueTokens not implemented")
+}
+func (UnimplementedIdentityServer) RefreshToken(context.Context, *TokenRequest) (*TokenReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RefreshToken not implemented")
+}
+func (UnimplementedIdentityServer) SetUserPermissions(context.Context, *SetUserPermissionsRequest) (*SetUserPermissionsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetUserPermissions not implemented")
+}
+func (UnimplementedIdentityServer) GetUserPermissions(context.Context, *GetUserPermissionsRequest) (*UserWithPermissions, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserPermissions not implemented")
 }
 func (UnimplementedIdentityServer) mustEmbedUnimplementedIdentityServer() {}
 
@@ -74,20 +119,74 @@ func RegisterIdentityServer(s grpc.ServiceRegistrar, srv IdentityServer) {
 	s.RegisterService(&Identity_ServiceDesc, srv)
 }
 
-func _Identity_IssueToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Identity_IssueTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IssueTokensRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServer).IssueTokens(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Identity_IssueTokens_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServer).IssueTokens(ctx, req.(*IssueTokensRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Identity_RefreshToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServer).IssueToken(ctx, in)
+		return srv.(IdentityServer).RefreshToken(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Identity_IssueToken_FullMethodName,
+		FullMethod: Identity_RefreshToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServer).IssueToken(ctx, req.(*TokenRequest))
+		return srv.(IdentityServer).RefreshToken(ctx, req.(*TokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Identity_SetUserPermissions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetUserPermissionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServer).SetUserPermissions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Identity_SetUserPermissions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServer).SetUserPermissions(ctx, req.(*SetUserPermissionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Identity_GetUserPermissions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserPermissionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServer).GetUserPermissions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Identity_GetUserPermissions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServer).GetUserPermissions(ctx, req.(*GetUserPermissionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -100,8 +199,20 @@ var Identity_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*IdentityServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "IssueToken",
-			Handler:    _Identity_IssueToken_Handler,
+			MethodName: "IssueTokens",
+			Handler:    _Identity_IssueTokens_Handler,
+		},
+		{
+			MethodName: "RefreshToken",
+			Handler:    _Identity_RefreshToken_Handler,
+		},
+		{
+			MethodName: "SetUserPermissions",
+			Handler:    _Identity_SetUserPermissions_Handler,
+		},
+		{
+			MethodName: "GetUserPermissions",
+			Handler:    _Identity_GetUserPermissions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

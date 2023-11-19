@@ -12,9 +12,11 @@ import (
 	"github.com/VidroX/cutcutfilm/services/identity/core/database"
 	"github.com/VidroX/cutcutfilm/services/identity/core/repositories"
 	"github.com/VidroX/cutcutfilm/services/identity/core/services"
+	"github.com/google/uuid"
 
 	"github.com/VidroX/cutcutfilm/services/identity/resources"
 
+	"github.com/VidroX/cutcutfilm-shared/permissions"
 	"github.com/VidroX/cutcutfilm-shared/translator"
 	"github.com/VidroX/cutcutfilm/services/identity/core/environment"
 	"github.com/VidroX/cutcutfilm/services/identity/core/jwx"
@@ -180,7 +182,33 @@ func authInterceptor(ctx context.Context, md metadata.MD) (context.Context, erro
 		)
 	}
 
-	userId, exists := validatedToken.Get("sub")
+	if *tokenType != jwx.TokenTypeApplicationRequest {
+		userId, exists := validatedToken.Get("sub")
+
+		if !exists {
+			return nil, status.Errorf(
+				codes.Unauthenticated,
+				translator.
+					WithKey(resources.KeysInvalidOrExpiredTokenError).
+					Translate(localizer),
+			)
+		}
+
+		_, err := uuid.Parse(userId.(string))
+
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Unauthenticated,
+				translator.
+					WithKey(resources.KeysInvalidOrExpiredTokenError).
+					Translate(localizer),
+			)
+		}
+
+		ctx = context.WithValue(ctx, "user_id", userId.(string))
+	}
+
+	issuer, exists := validatedToken.Get("iss")
 
 	if !exists {
 		return nil, status.Errorf(
@@ -191,8 +219,14 @@ func authInterceptor(ctx context.Context, md metadata.MD) (context.Context, erro
 		)
 	}
 
-	ctx = context.WithValue(ctx, "user_id", userId.(string))
+	permissionsString, exists := validatedToken.Get("permissions")
+	if !exists {
+		permissionsString = ""
+	}
+
 	ctx = context.WithValue(ctx, "user_token_type", tokenType)
+	ctx = context.WithValue(ctx, "user_token_issuer", issuer.(string))
+	ctx = context.WithValue(ctx, "user_permissions", permissions.ParsePermissionsString(permissionsString.(string)))
 
 	return ctx, nil
 }

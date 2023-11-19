@@ -2,16 +2,17 @@ package database
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"strings"
+
+	"github.com/VidroX/cutcutfilm-shared/permissions"
 	"github.com/VidroX/cutcutfilm-shared/utils"
-	"github.com/VidroX/cutcutfilm/services/identity/core"
 	"github.com/VidroX/cutcutfilm/services/identity/core/database/models"
 	"github.com/VidroX/cutcutfilm/services/identity/core/environment"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log"
-	"os"
-	"strings"
 )
 
 type NebulaDb struct {
@@ -30,15 +31,15 @@ func (db *NebulaDb) AutoMigrateAll() {
 }
 
 func (db *NebulaDb) PopulatePermissions() {
-	for _, permission := range core.AllPermissions {
+	for _, permission := range permissions.AllPermissions {
 		dbPermission := models.Permission{}
-		db.First(&dbPermission, "name = ?", permission.Name)
+		db.First(&dbPermission, "action = ?", permission.Action)
 
-		if len(dbPermission.Name) > 0 {
+		if len(dbPermission.Action) > 0 {
 			continue
 		}
 
-		dbPermission.Name = permission.Name
+		dbPermission.Action = permission.Action
 		dbPermission.Description = permission.Description
 
 		err := db.Create(&dbPermission).Error
@@ -68,7 +69,7 @@ func (db *NebulaDb) SetAdminPermissions() {
 	adminPermissionRead := models.UserPermission{
 		UserID: strings.TrimSpace(adminId),
 		Permission: models.Permission{
-			Name:        "read:admin",
+			Action:      "read:admin",
 			Description: "Admin read access",
 		},
 	}
@@ -76,7 +77,7 @@ func (db *NebulaDb) SetAdminPermissions() {
 	adminPermissionWrite := models.UserPermission{
 		UserID: strings.TrimSpace(adminId),
 		Permission: models.Permission{
-			Name:        "write:admin",
+			Action:      "write:admin",
 			Description: "Admin write access",
 		},
 	}

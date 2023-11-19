@@ -4,4 +4,4 @@ metadata:
   name: {{ .Values.services.gateway.name }}-config
   namespace: {{ .Values.namespace }}
 data:
-  identity_service_location: "{{ .Values.services.gateway.identityServiceName }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.services.gateway.identityServicePort }}"
+  identity_service_location: "{{ .Values.services.identity.name }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.services.identity.port }}"

@@ -16,10 +16,11 @@ services:
     replicas: 1
     path: "/user-service"
     name: "cutcutfilm-user-dev"
-    identityServiceName: "cutcutfilm-identity-dev"
-    identityServicePort: 4002
     image: ""
     containerPort: 4001
+  identity:
+    name: "cutcutfilm-identity-dev"
+    port: 4002
   userDatabase:
     name: "user-db-postgresql"
     secretName: "ccf-dev-secret"

@@ -22,4 +22,4 @@ services:
   identityDatabase:
     name: "identity-db-postgresql"
     secretName: "ccf-dev-secret"
-    port: 5432
+    port: 5433

@@ -73,7 +73,6 @@ services:
     ports:
       - "4002:4002"
     volumes:
-      - ./services/identity:/app/cutcutfilm/services/identity
       - shared-data:/app/cutcutfilm/data
     depends_on:
       - identity-pgsql

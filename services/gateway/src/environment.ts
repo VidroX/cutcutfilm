@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { rootDir } from './path_utils.ts';
+import { rootDir } from './path_utils.js';
 import path from 'path';
 
 dotenv.config({

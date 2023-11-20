@@ -17,6 +17,7 @@ services:
     replicas: 1
     path: "/"
     name: "cutcutfilm-gateway-dev"
+    secretName: "ccf-dev-secret"
     image: ""
     containerPort: 4000
   identity:

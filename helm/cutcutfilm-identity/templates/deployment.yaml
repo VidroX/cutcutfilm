@@ -37,7 +37,7 @@ spec:
                   name: {{ .Values.services.identityDatabase.secretName }}
                   key: identity-db-password
             - name: POSTGRESQL_DATABASE
-              value: "{{ .Values.services.identityDatabase.name }}"
+              value: "{{ .Values.services.identityDatabase.databaseName }}"
             - name: POSTGRESQL_PORT_NUMBER
               value: "{{ .Values.services.identityDatabase.port }}"
             - name: API_KEY

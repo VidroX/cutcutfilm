@@ -26,7 +26,7 @@ func LoadEnvironment(params *EnvironmentParams) {
 	envName = ".env"
 	err = godotenv.Load(params.BasePath + envName)
 
-	if err != nil {
+	if err != nil && strings.EqualFold(os.Getenv(KeysDebug), "True") {
 		log.Printf("Error loading .env file (%s)", envName)
 	}
 

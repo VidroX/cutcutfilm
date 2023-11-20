@@ -13,6 +13,7 @@ services:
   user:
     replicas: 1
     name: "cutcutfilm-user"
+    secretName: "ccf-secret"
     image: ""
     containerPort: 4001
   identity:
@@ -20,5 +21,6 @@ services:
     port: 4002
   userDatabase:
     name: "user-db-postgresql"
+    databaseName: "cutcutfilm-user"
     secretName: "ccf-secret"
     port: 5432

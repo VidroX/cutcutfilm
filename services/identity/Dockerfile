@@ -1,8 +1,11 @@
-FROM golang:1.21.4-bullseye
+FROM golang:1.21.4-alpine
 
 ENV APP_NAME cutcutfilm
-ENV APP_HOME /app/${APP_NAME}/services/identity
+ENV APP_SERVICE_NAME cutcutfilm-user
+ENV APP_HOME /app/${APP_NAME}/services/user
 WORKDIR "$APP_HOME"
+
+RUN apk add --no-cache git
 
 ARG GIT_USER
 ARG GIT_TOKEN
@@ -16,7 +19,7 @@ ENV CGO_ENABLED=0
 COPY . .
 
 RUN go mod tidy
-RUN go build -v -o "$APP_NAME"
+RUN go build -v -o "$APP_SERVICE_NAME"
 
-RUN chmod +x ./$APP_NAME
-CMD "./$APP_NAME"
+RUN chmod +x ./$APP_SERVICE_NAME
+CMD ["sh", "-c", "./$APP_SERVICE_NAME"]

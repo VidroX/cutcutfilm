@@ -15,18 +15,18 @@ import {
 } from '@apollo/server/plugin/disabled';
 import { ApolloServerPluginInlineTrace } from '@apollo/server/plugin/inlineTrace';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
-import { rootDir } from './path_utils.ts';
+import { rootDir } from './path_utils.js';
 import {
 	DEBUG,
 	IDENTITY_SERVICE_API_KEY,
 	IDENTITY_SERVICE_LOCATION,
 	NODE_ENV,
 	PORT,
-} from './environment.ts';
+} from './environment.js';
 import { createPromiseClient } from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-node';
-import { IdentityService } from './proto/identity/v1/identity_connect.ts';
-import { ContextUser } from './context_user.ts';
+import { IdentityService } from './proto/identity/v1/identity_connect.js';
+import { ContextUser } from './context_user.js';
 
 const app = express();
 const httpServer = http.createServer(app);

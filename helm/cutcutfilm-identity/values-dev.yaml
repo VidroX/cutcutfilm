@@ -21,5 +21,6 @@ services:
     containerPort: 4002
   identityDatabase:
     name: "identity-db-postgresql"
+    databaseName: "cutcutfilm-identity"
     secretName: "ccf-dev-secret"
     port: 5433

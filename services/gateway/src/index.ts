@@ -16,7 +16,17 @@ import {
 import { ApolloServerPluginInlineTrace } from '@apollo/server/plugin/inlineTrace';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import { rootDir } from './path_utils.ts';
-import { DEBUG, NODE_ENV, PORT } from './environment.ts';
+import {
+	DEBUG,
+	IDENTITY_SERVICE_API_KEY,
+	IDENTITY_SERVICE_LOCATION,
+	NODE_ENV,
+	PORT,
+} from './environment.ts';
+import { createPromiseClient } from '@connectrpc/connect';
+import { createConnectTransport } from '@connectrpc/connect-node';
+import { IdentityService } from './proto/identity/v1/identity_connect.ts';
+import { ContextUser } from './context_user.ts';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -27,6 +37,12 @@ const gateway = new ApolloGateway({
 	debug: DEBUG,
 	supergraphSdl: readFileSync(supergraphPath).toString(),
 });
+
+const identityServiceConnector = createConnectTransport({
+	baseUrl: IDENTITY_SERVICE_LOCATION,
+	httpVersion: '2',
+});
+const identityServiceClient = createPromiseClient(IdentityService, identityServiceConnector);
 
 const debugPlugins = DEBUG
 	? [
@@ -81,10 +97,33 @@ app.use(
 	bodyParser.json({ limit: '10mb' }),
 	expressMiddleware(server, {
 		context: async ({ req }) => {
-			const token = (req.headers.authorization ?? '').trim().replace('Bearer ', '');
-			const tokenClaims = token; //await decodeToken(token);
+			if (req.body?.operationName === 'IntrospectionQuery') {
+				return {};
+			}
 
-			return { tokenClaims };
+			const token = (req.headers.authorization ?? '').trim().replace('Bearer ', '');
+
+			if (token.trim().length < 1) {
+				return {};
+			}
+
+			try {
+				const headers = new Headers();
+				headers.set('accept-language', req.headers['accept-language'] ?? 'en');
+				headers.set('x-api-key', IDENTITY_SERVICE_API_KEY);
+				headers.set('authorization', token);
+
+				const resp = await identityServiceClient.getUserPermissions({}, { headers });
+
+				const user: ContextUser = {
+					userId: resp.userId,
+					permissions: resp.permissions,
+				};
+
+				return { user };
+			} catch (err) {
+				return {};
+			}
 		},
 	})
 );

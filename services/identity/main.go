@@ -51,8 +51,6 @@ func main() {
 		PublicKey:  &public,
 	}
 
-	fmt.Println(jwx.CreateToken(jwx.TokenTypeApplicationRequest, nil, nil))
-
 	db := initDatabase()
 	initServer(debug, db)
 }

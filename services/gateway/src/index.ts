@@ -1,5 +1,4 @@
 import express from 'express';
-import dotenv from 'dotenv';
 import http from 'http';
 import path from 'path';
 import { readFileSync } from 'fs';
@@ -9,7 +8,6 @@ import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHt
 import { expressMiddleware } from '@apollo/server/express4';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import { fileURLToPath } from 'url';
 import {
 	ApolloServerPluginInlineTraceDisabled,
 	ApolloServerPluginLandingPageDisabled,
@@ -17,29 +15,36 @@ import {
 } from '@apollo/server/plugin/disabled';
 import { ApolloServerPluginInlineTrace } from '@apollo/server/plugin/inlineTrace';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({
-	path: path.join(__dirname, '..', '.env'),
-});
-
-const port = process.env.PORT ?? 4000;
-const debug = (process.env.DEBUG ?? 'false') === 'true';
-const nodeEnv = process.env.NODE_ENV ?? 'production';
+import { rootDir } from './path_utils.ts';
+import {
+	DEBUG,
+	IDENTITY_SERVICE_API_KEY,
+	IDENTITY_SERVICE_LOCATION,
+	NODE_ENV,
+	PORT,
+} from './environment.ts';
+import { createPromiseClient } from '@connectrpc/connect';
+import { createConnectTransport } from '@connectrpc/connect-node';
+import { IdentityService } from './proto/identity/v1/identity_connect.ts';
+import { ContextUser } from './context_user.ts';
 
 const app = express();
 const httpServer = http.createServer(app);
 
-const supergraphPath = path.join(__dirname, '..', 'supergraph.graphql');
+const supergraphPath = path.join(rootDir, '..', 'supergraph.graphql');
 
 const gateway = new ApolloGateway({
-	debug,
+	debug: DEBUG,
 	supergraphSdl: readFileSync(supergraphPath).toString(),
 });
 
-const debugPlugins = debug
+const identityServiceConnector = createConnectTransport({
+	baseUrl: IDENTITY_SERVICE_LOCATION,
+	httpVersion: '2',
+});
+const identityServiceClient = createPromiseClient(IdentityService, identityServiceConnector);
+
+const debugPlugins = DEBUG
 	? [
 			ApolloServerPluginInlineTrace({
 				includeErrors: { transform: (err) => err },
@@ -53,9 +58,9 @@ const debugPlugins = debug
 
 const server = new ApolloServer({
 	gateway,
-	nodeEnv,
-	includeStacktraceInErrorResponses: debug,
-	introspection: debug,
+	nodeEnv: NODE_ENV,
+	includeStacktraceInErrorResponses: DEBUG,
+	introspection: DEBUG,
 	plugins: [
 		...debugPlugins,
 		responseCachePlugin(),
@@ -66,7 +71,7 @@ const server = new ApolloServer({
 await server.start();
 
 const allowedOrigins = [
-	`http://localhost:${port}`,
+	`http://localhost:${PORT}`,
 	'http://localhost',
 	'https://ccf-dev.vidrox.me',
 	'https://cutcutfilm.com',
@@ -91,12 +96,38 @@ app.use(
 	}),
 	bodyParser.json({ limit: '10mb' }),
 	expressMiddleware(server, {
-		context: async ({ req }) => ({
-			token: (req.headers.authorization ?? '').trim().replace('Bearer ', ''),
-		}),
+		context: async ({ req }) => {
+			if (req.body?.operationName === 'IntrospectionQuery') {
+				return {};
+			}
+
+			const token = (req.headers.authorization ?? '').trim().replace('Bearer ', '');
+
+			if (token.trim().length < 1) {
+				return {};
+			}
+
+			try {
+				const headers = new Headers();
+				headers.set('accept-language', req.headers['accept-language'] ?? 'en');
+				headers.set('x-api-key', IDENTITY_SERVICE_API_KEY);
+				headers.set('authorization', token);
+
+				const resp = await identityServiceClient.getUserPermissions({}, { headers });
+
+				const user: ContextUser = {
+					userId: resp.userId,
+					permissions: resp.permissions,
+				};
+
+				return { user };
+			} catch (err) {
+				return {};
+			}
+		},
 	})
 );
 
-await new Promise<void>((resolve) => httpServer.listen({ port }, resolve));
+await new Promise<void>((resolve) => httpServer.listen({ port: PORT }, resolve));
 
-console.log(`🚀 Server ready at http://localhost:${port}/gql`);
+console.log(`🚀 Server ready at http://localhost:${PORT}/gql`);

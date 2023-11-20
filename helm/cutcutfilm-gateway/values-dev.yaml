@@ -4,6 +4,7 @@ name: "cutcutfilm-gateway-dev"
 host: "ccf-dev.vidrox.me"
 
 debug: false
+environmentType: "development"
 
 imagePullSecrets: [{ name: cutcutfilm-ghcr }]
 
@@ -18,3 +19,6 @@ services:
     name: "cutcutfilm-gateway-dev"
     image: ""
     containerPort: 4000
+  identity:
+    name: "cutcutfilm-identity-dev"
+    port: 4002

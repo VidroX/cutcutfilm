@@ -1,0 +1,18 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/VidroX/cutcutfilm/services/identity/proto
+plugins:
+  - plugin: buf.build/protocolbuffers/go
+    out: services/identity/proto
+    opt: paths=source_relative
+  - plugin: buf.build/connectrpc/go
+    out: services/identity/proto
+    opt: paths=source_relative
+  - plugin: buf.build/connectrpc/es
+    out: services/gateway/src/proto
+    opt: target=ts
+  - plugin: buf.build/bufbuild/es
+    out: services/gateway/src/proto
+    opt: target=ts

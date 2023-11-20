@@ -1,0 +1,25 @@
+namespace: "cutcutfilm-dev"
+name: "cutcutfilm-identity-dev"
+
+host: "ccf-dev.vidrox.me"
+
+debug: false
+
+imagePullSecrets: [{ name: cutcutfilm-ghcr }]
+
+persistence:
+  claimName: "cutcutfilm-dev-storage"
+  mountPath: /app/cutcutfilm-dev/data
+
+services:
+  identity:
+    replicas: 1
+    path: "/identity-service"
+    name: "cutcutfilm-identity-dev"
+    secretName: "ccf-dev-secret"
+    image: ""
+    containerPort: 4002
+  identityDatabase:
+    name: "identity-db-postgresql"
+    secretName: "ccf-dev-secret"
+    port: 5433

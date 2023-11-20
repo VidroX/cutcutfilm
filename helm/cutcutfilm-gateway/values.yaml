@@ -4,6 +4,7 @@ name: "cutcutfilm-gateway"
 host: "cutcutfilm.com"
 
 debug: false
+environmentType: "production"
 
 imagePullSecrets: [{ name: cutcutfilm-ghcr }]
 
@@ -18,3 +19,6 @@ services:
     name: "cutcutfilm-gateway"
     image: ""
     containerPort: 4000
+  identity:
+    name: "cutcutfilm-identity"
+    port: 4002

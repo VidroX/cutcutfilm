@@ -1,4 +1,4 @@
-FROM golang:1.21.0
+FROM golang:1.21.4-bullseye
 
 ENV APP_NAME cutcutfilm
 ENV APP_HOME /app/${APP_NAME}/services/user

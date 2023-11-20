@@ -23,6 +23,18 @@ spec:
               value: "{{ .Values.debug }}"
             - name: NODE_ENV
               value: "production"
+            - name: ENVIRONMENT_TYPE
+              value: "{{ .Values.environmentType }}"
+            - name: IDENTITY_SERVICE_LOCATION
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.gateway.name }}-config
+                  key: identity_service_location
+            - name: IDENTITY_SERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.services.gateway.secretName }}
+                  key: identity-api-key
           ports:
             - containerPort: {{ .Values.services.gateway.containerPort }}
           volumeMounts:

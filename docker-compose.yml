@@ -10,11 +10,14 @@ services:
       - DEBUG=false
       - NODE_ENV=production
       - PORT=4000
+      - DATA_PATH=/app/cutcutfilm/data
     volumes:
       - shared-data:/app/cutcutfilm/data
     depends_on:
       - user-pgsql
       - user
+      - identity
+      - identity-pgsql
     ports:
       - "4000:4000"
 
@@ -31,6 +34,8 @@ services:
     environment:
       - DEBUG=false
       - PORT=4001
+      - DATA_PATH=/app/cutcutfilm/data
+      - DATABASE_URI=user-pgsql
     ports:
       - "4001:4001"
     volumes:
@@ -46,9 +51,44 @@ services:
     env_file:
       - ./services/user/.env
     ports:
-      - "5433:5433"
+      - "5432:5432"
     volumes:
       - ./services/user/database_data:/bitnami/postgresql
+  
+  identity:
+    build:
+      context: ./services/identity/
+      dockerfile: Dockerfile
+      args:
+        - GIT_USER=${GIT_USER}
+        - GIT_TOKEN=${GIT_TOKEN}
+    restart: unless-stopped
+    env_file:
+      - ./services/identity/.env
+    environment:
+      - DEBUG=false
+      - PORT=4002
+      - DATA_PATH=/app/cutcutfilm/data
+      - DATABASE_URI=identity-pgsql
+    ports:
+      - "4002:4002"
+    volumes:
+      - ./services/identity:/app/cutcutfilm/services/identity
+      - shared-data:/app/cutcutfilm/data
+    depends_on:
+      - identity-pgsql
+    links:
+      - identity-pgsql
+
+  identity-pgsql:
+    image: bitnami/postgresql:15.4.0
+    restart: unless-stopped
+    env_file:
+      - ./services/identity/.env
+    ports:
+      - "5433:5433"
+    volumes:
+      - ./services/identity/database_data:/bitnami/postgresql
 
 volumes:
   shared-data:

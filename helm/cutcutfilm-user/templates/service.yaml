@@ -4,6 +4,7 @@ metadata:
   name: {{ .Values.services.user.name }}
   namespace: {{ .Values.namespace }}
 spec:
+  type: ClusterIP
   ports:
     - port: {{ .Values.services.user.containerPort }}
       protocol: TCP

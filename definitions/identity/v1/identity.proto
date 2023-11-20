@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+option go_package = "github.com/VidroX/cutcutfilm/services/identity/identity";
+
+package identity.v1;
+
+service IdentityService {
+  rpc IssueTokens (IssueTokensRequest) returns (IssueTokensResponse) {}
+  rpc RefreshToken (RefreshTokenRequest) returns (RefreshTokenResponse) {}
+  rpc SetUserPermissions (SetUserPermissionsRequest) returns (SetUserPermissionsResponse) {}
+  rpc GetUserPermissions (GetUserPermissionsRequest) returns (GetUserPermissionsResponse) {}
+}
+
+message IssueTokensRequest {
+  string user_id = 1;
+}
+
+message IssueTokensResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+message RefreshTokenRequest {}
+
+message RefreshTokenResponse {
+  string token = 1;
+}
+
+message Permission {
+  string action = 1;
+  string description = 2;
+}
+
+message GetUserPermissionsResponse {
+  string user_id = 1;
+  repeated Permission permissions = 2;
+}
+
+message SetUserPermissionsRequest {
+  string user_id = 1;
+  repeated string permissions = 2;
+}
+
+message UserWithPermissions {
+  string user_id = 1;
+  repeated Permission permissions = 2;
+}
+
+message SetUserPermissionsResponse {
+  string token = 1;
+  UserWithPermissions user = 2;
+}
+
+message GetUserPermissionsRequest {
+  string user_id = 1;
+}

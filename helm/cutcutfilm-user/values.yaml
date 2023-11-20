@@ -1,8 +1,6 @@
 namespace: "cutcutfilm"
 name: "cutcutfilm-user"
 
-host: "cutcutfilm.com"
-
 debug: false
 
 imagePullSecrets: [{ name: cutcutfilm-ghcr }]
@@ -14,10 +12,12 @@ persistence:
 services:
   user:
     replicas: 1
-    path: "/user-service"
     name: "cutcutfilm-user"
     image: ""
     containerPort: 4001
+  identity:
+    name: "cutcutfilm-identity"
+    port: 4002
   userDatabase:
     name: "user-db-postgresql"
     secretName: "ccf-secret"

@@ -1,0 +1,11 @@
+{
+    "generalErrors": {
+        "validation": {
+            "fieldRequired": "This field is required",
+            "incorrectEmail": "Please, enter a correct E-Mail address",
+            "unknownValidationError": "Please, check this field for errors"
+        },
+        "notEnoughPermissions": "You don't have enough permissions to perform this action",
+        "internalError": "An internal error has occurred"
+    }
+}

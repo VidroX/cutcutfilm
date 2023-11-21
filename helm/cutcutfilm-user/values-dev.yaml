@@ -1,7 +1,7 @@
 namespace: "cutcutfilm-dev"
 name: "cutcutfilm-user-dev"
 
-debug: false
+debug: true
 
 imagePullSecrets: [{ name: cutcutfilm-ghcr }]
 

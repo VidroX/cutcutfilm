@@ -36,6 +36,9 @@ const (
 	// IdentityServiceIssueTokensProcedure is the fully-qualified name of the IdentityService's
 	// IssueTokens RPC.
 	IdentityServiceIssueTokensProcedure = "/identity.v1.IdentityService/IssueTokens"
+	// IdentityServiceIssueServiceTokenProcedure is the fully-qualified name of the IdentityService's
+	// IssueServiceToken RPC.
+	IdentityServiceIssueServiceTokenProcedure = "/identity.v1.IdentityService/IssueServiceToken"
 	// IdentityServiceRefreshTokenProcedure is the fully-qualified name of the IdentityService's
 	// RefreshToken RPC.
 	IdentityServiceRefreshTokenProcedure = "/identity.v1.IdentityService/RefreshToken"
@@ -45,14 +48,23 @@ const (
 	// IdentityServiceGetUserPermissionsProcedure is the fully-qualified name of the IdentityService's
 	// GetUserPermissions RPC.
 	IdentityServiceGetUserPermissionsProcedure = "/identity.v1.IdentityService/GetUserPermissions"
+	// IdentityServiceValidateUserProcedure is the fully-qualified name of the IdentityService's
+	// ValidateUser RPC.
+	IdentityServiceValidateUserProcedure = "/identity.v1.IdentityService/ValidateUser"
+	// IdentityServiceGetKeySetProcedure is the fully-qualified name of the IdentityService's GetKeySet
+	// RPC.
+	IdentityServiceGetKeySetProcedure = "/identity.v1.IdentityService/GetKeySet"
 )
 
 // IdentityServiceClient is a client for the identity.v1.IdentityService service.
 type IdentityServiceClient interface {
 	IssueTokens(context.Context, *connect.Request[v1.IssueTokensRequest]) (*connect.Response[v1.IssueTokensResponse], error)
+	IssueServiceToken(context.Context, *connect.Request[v1.IssueServiceTokenRequest]) (*connect.Response[v1.IssueServiceTokenResponse], error)
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 	SetUserPermissions(context.Context, *connect.Request[v1.SetUserPermissionsRequest]) (*connect.Response[v1.SetUserPermissionsResponse], error)
 	GetUserPermissions(context.Context, *connect.Request[v1.GetUserPermissionsRequest]) (*connect.Response[v1.GetUserPermissionsResponse], error)
+	ValidateUser(context.Context, *connect.Request[v1.ValidateUserRequest]) (*connect.Response[v1.ValidateUserResponse], error)
+	GetKeySet(context.Context, *connect.Request[v1.GetKeySetRequest]) (*connect.Response[v1.GetKeySetResponse], error)
 }
 
 // NewIdentityServiceClient constructs a client for the identity.v1.IdentityService service. By
@@ -70,6 +82,11 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			baseURL+IdentityServiceIssueTokensProcedure,
 			opts...,
 		),
+		issueServiceToken: connect.NewClient[v1.IssueServiceTokenRequest, v1.IssueServiceTokenResponse](
+			httpClient,
+			baseURL+IdentityServiceIssueServiceTokenProcedure,
+			opts...,
+		),
 		refreshToken: connect.NewClient[v1.RefreshTokenRequest, v1.RefreshTokenResponse](
 			httpClient,
 			baseURL+IdentityServiceRefreshTokenProcedure,
@@ -85,20 +102,38 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			baseURL+IdentityServiceGetUserPermissionsProcedure,
 			opts...,
 		),
+		validateUser: connect.NewClient[v1.ValidateUserRequest, v1.ValidateUserResponse](
+			httpClient,
+			baseURL+IdentityServiceValidateUserProcedure,
+			opts...,
+		),
+		getKeySet: connect.NewClient[v1.GetKeySetRequest, v1.GetKeySetResponse](
+			httpClient,
+			baseURL+IdentityServiceGetKeySetProcedure,
+			opts...,
+		),
 	}
 }
 
 // identityServiceClient implements IdentityServiceClient.
 type identityServiceClient struct {
 	issueTokens        *connect.Client[v1.IssueTokensRequest, v1.IssueTokensResponse]
+	issueServiceToken  *connect.Client[v1.IssueServiceTokenRequest, v1.IssueServiceTokenResponse]
 	refreshToken       *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
 	setUserPermissions *connect.Client[v1.SetUserPermissionsRequest, v1.SetUserPermissionsResponse]
 	getUserPermissions *connect.Client[v1.GetUserPermissionsRequest, v1.GetUserPermissionsResponse]
+	validateUser       *connect.Client[v1.ValidateUserRequest, v1.ValidateUserResponse]
+	getKeySet          *connect.Client[v1.GetKeySetRequest, v1.GetKeySetResponse]
 }
 
 // IssueTokens calls identity.v1.IdentityService.IssueTokens.
 func (c *identityServiceClient) IssueTokens(ctx context.Context, req *connect.Request[v1.IssueTokensRequest]) (*connect.Response[v1.IssueTokensResponse], error) {
 	return c.issueTokens.CallUnary(ctx, req)
+}
+
+// IssueServiceToken calls identity.v1.IdentityService.IssueServiceToken.
+func (c *identityServiceClient) IssueServiceToken(ctx context.Context, req *connect.Request[v1.IssueServiceTokenRequest]) (*connect.Response[v1.IssueServiceTokenResponse], error) {
+	return c.issueServiceToken.CallUnary(ctx, req)
 }
 
 // RefreshToken calls identity.v1.IdentityService.RefreshToken.
@@ -116,12 +151,25 @@ func (c *identityServiceClient) GetUserPermissions(ctx context.Context, req *con
 	return c.getUserPermissions.CallUnary(ctx, req)
 }
 
+// ValidateUser calls identity.v1.IdentityService.ValidateUser.
+func (c *identityServiceClient) ValidateUser(ctx context.Context, req *connect.Request[v1.ValidateUserRequest]) (*connect.Response[v1.ValidateUserResponse], error) {
+	return c.validateUser.CallUnary(ctx, req)
+}
+
+// GetKeySet calls identity.v1.IdentityService.GetKeySet.
+func (c *identityServiceClient) GetKeySet(ctx context.Context, req *connect.Request[v1.GetKeySetRequest]) (*connect.Response[v1.GetKeySetResponse], error) {
+	return c.getKeySet.CallUnary(ctx, req)
+}
+
 // IdentityServiceHandler is an implementation of the identity.v1.IdentityService service.
 type IdentityServiceHandler interface {
 	IssueTokens(context.Context, *connect.Request[v1.IssueTokensRequest]) (*connect.Response[v1.IssueTokensResponse], error)
+	IssueServiceToken(context.Context, *connect.Request[v1.IssueServiceTokenRequest]) (*connect.Response[v1.IssueServiceTokenResponse], error)
 	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 	SetUserPermissions(context.Context, *connect.Request[v1.SetUserPermissionsRequest]) (*connect.Response[v1.SetUserPermissionsResponse], error)
 	GetUserPermissions(context.Context, *connect.Request[v1.GetUserPermissionsRequest]) (*connect.Response[v1.GetUserPermissionsResponse], error)
+	ValidateUser(context.Context, *connect.Request[v1.ValidateUserRequest]) (*connect.Response[v1.ValidateUserResponse], error)
+	GetKeySet(context.Context, *connect.Request[v1.GetKeySetRequest]) (*connect.Response[v1.GetKeySetResponse], error)
 }
 
 // NewIdentityServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -133,6 +181,11 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 	identityServiceIssueTokensHandler := connect.NewUnaryHandler(
 		IdentityServiceIssueTokensProcedure,
 		svc.IssueTokens,
+		opts...,
+	)
+	identityServiceIssueServiceTokenHandler := connect.NewUnaryHandler(
+		IdentityServiceIssueServiceTokenProcedure,
+		svc.IssueServiceToken,
 		opts...,
 	)
 	identityServiceRefreshTokenHandler := connect.NewUnaryHandler(
@@ -150,16 +203,32 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 		svc.GetUserPermissions,
 		opts...,
 	)
+	identityServiceValidateUserHandler := connect.NewUnaryHandler(
+		IdentityServiceValidateUserProcedure,
+		svc.ValidateUser,
+		opts...,
+	)
+	identityServiceGetKeySetHandler := connect.NewUnaryHandler(
+		IdentityServiceGetKeySetProcedure,
+		svc.GetKeySet,
+		opts...,
+	)
 	return "/identity.v1.IdentityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case IdentityServiceIssueTokensProcedure:
 			identityServiceIssueTokensHandler.ServeHTTP(w, r)
+		case IdentityServiceIssueServiceTokenProcedure:
+			identityServiceIssueServiceTokenHandler.ServeHTTP(w, r)
 		case IdentityServiceRefreshTokenProcedure:
 			identityServiceRefreshTokenHandler.ServeHTTP(w, r)
 		case IdentityServiceSetUserPermissionsProcedure:
 			identityServiceSetUserPermissionsHandler.ServeHTTP(w, r)
 		case IdentityServiceGetUserPermissionsProcedure:
 			identityServiceGetUserPermissionsHandler.ServeHTTP(w, r)
+		case IdentityServiceValidateUserProcedure:
+			identityServiceValidateUserHandler.ServeHTTP(w, r)
+		case IdentityServiceGetKeySetProcedure:
+			identityServiceGetKeySetHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -173,6 +242,10 @@ func (UnimplementedIdentityServiceHandler) IssueTokens(context.Context, *connect
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("identity.v1.IdentityService.IssueTokens is not implemented"))
 }
 
+func (UnimplementedIdentityServiceHandler) IssueServiceToken(context.Context, *connect.Request[v1.IssueServiceTokenRequest]) (*connect.Response[v1.IssueServiceTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("identity.v1.IdentityService.IssueServiceToken is not implemented"))
+}
+
 func (UnimplementedIdentityServiceHandler) RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("identity.v1.IdentityService.RefreshToken is not implemented"))
 }
@@ -183,4 +256,12 @@ func (UnimplementedIdentityServiceHandler) SetUserPermissions(context.Context, *
 
 func (UnimplementedIdentityServiceHandler) GetUserPermissions(context.Context, *connect.Request[v1.GetUserPermissionsRequest]) (*connect.Response[v1.GetUserPermissionsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("identity.v1.IdentityService.GetUserPermissions is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) ValidateUser(context.Context, *connect.Request[v1.ValidateUserRequest]) (*connect.Response[v1.ValidateUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("identity.v1.IdentityService.ValidateUser is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) GetKeySet(context.Context, *connect.Request[v1.GetKeySetRequest]) (*connect.Response[v1.GetKeySetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("identity.v1.IdentityService.GetKeySet is not implemented"))
 }

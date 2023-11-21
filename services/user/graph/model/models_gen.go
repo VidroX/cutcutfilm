@@ -2,10 +2,78 @@
 
 package model
 
-type NewTodo struct {
-	Text string `json:"text"`
+import (
+	"fmt"
+	"io"
+	"strconv"
+
+	database "github.com/VidroX/cutcutfilm-shared/pagination"
+)
+
+// Auth token
+type Token struct {
+	Type  TokenType `json:"type"`
+	Token string    `json:"token"`
 }
 
-type Todo struct {
-	Text string `json:"text"`
+// Registration input data for User
+type UserRegistrationInput struct {
+	UserName string `json:"userName"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// Response with User and its auth tokens
+type UserWithToken struct {
+	User         *User  `json:"user,omitempty"`
+	AccessToken  *Token `json:"accessToken,omitempty"`
+	RefreshToken *Token `json:"refreshToken,omitempty"`
+}
+
+// Users list connection
+type UsersConnection struct {
+	Node     []*User            `json:"node"`
+	PageInfo *database.PageInfo `json:"pageInfo"`
+}
+
+// Auth token types
+type TokenType string
+
+const (
+	TokenTypeAccess  TokenType = "Access"
+	TokenTypeRefresh TokenType = "Refresh"
+)
+
+var AllTokenType = []TokenType{
+	TokenTypeAccess,
+	TokenTypeRefresh,
+}
+
+func (e TokenType) IsValid() bool {
+	switch e {
+	case TokenTypeAccess, TokenTypeRefresh:
+		return true
+	}
+	return false
+}
+
+func (e TokenType) String() string {
+	return string(e)
+}
+
+func (e *TokenType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TokenType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TokenType", str)
+	}
+	return nil
+}
+
+func (e TokenType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }

@@ -6,22 +6,36 @@ package graph
 
 import (
 	"context"
+	"fmt"
+
+	database "github.com/VidroX/cutcutfilm-shared/pagination"
 	"github.com/VidroX/cutcutfilm/services/user/graph"
 	"github.com/VidroX/cutcutfilm/services/user/graph/model"
 )
 
-// CreateTodo is the resolver for the createTodo field.
-func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	return &model.Todo{Text: "test"}, nil
+// Login is the resolver for the login field.
+func (r *mutationResolver) Login(ctx context.Context, credential string, password string) (*model.UserWithToken, error) {
+	panic(fmt.Errorf("not implemented: Login - login"))
 }
 
-// Todos is the resolver for the todos field.
-func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	return []*model.Todo{
-		{Text: "test"},
-		{Text: "test2"},
-		{Text: "test3"},
-	}, nil
+// Register is the resolver for the register field.
+func (r *mutationResolver) Register(ctx context.Context, userInfo model.UserRegistrationInput) (*model.UserWithToken, error) {
+	panic(fmt.Errorf("not implemented: Register - register"))
+}
+
+// RefreshAccessToken is the resolver for the refreshAccessToken field.
+func (r *queryResolver) RefreshAccessToken(ctx context.Context) (*model.Token, error) {
+	panic(fmt.Errorf("not implemented: RefreshAccessToken - refreshAccessToken"))
+}
+
+// User is the resolver for the user field.
+func (r *queryResolver) User(ctx context.Context, userID *string) (*model.User, error) {
+	panic(fmt.Errorf("not implemented: User - user"))
+}
+
+// Users is the resolver for the users field.
+func (r *queryResolver) Users(ctx context.Context, pagination *database.Pagination) (*model.UsersConnection, error) {
+	panic(fmt.Errorf("not implemented: Users - users"))
 }
 
 // Mutation returns graph.MutationResolver implementation.

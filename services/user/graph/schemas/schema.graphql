@@ -1,18 +1,114 @@
 extend schema 
   @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key"])
 
-type Todo {
-  text: String!
+directive @isAuthenticated on FIELD_DEFINITION
+directive @hasPermission(permission: String!) on FIELD_DEFINITION|INPUT_FIELD_DEFINITION|ARGUMENT_DEFINITION
+
+"""
+Time scalar
+"""
+scalar Time
+
+"""
+Time scalar
+"""
+scalar Int64
+
+"""
+User model
+"""
+type User @key(fields: "id") {
+  id: ID!
+  email: String!
+  userName: String!
+}
+
+"""
+Registration input data for User
+"""
+input UserRegistrationInput {
+  userName: String!
+  email: String!
+  password: String!
+}
+
+"""
+Auth token types
+"""
+enum TokenType {
+  Access
+  Refresh
+}
+
+"""
+Auth token
+"""
+type Token {
+  type: TokenType!
+  token: String!
+}
+
+"""
+Response with User and its auth tokens
+"""
+type UserWithToken {
+  user: User
+  accessToken: Token
+  refreshToken: Token
+}
+
+"""
+Users list connection
+"""
+type UsersConnection {
+  node: [User]!
+  pageInfo: PageInfo!
+}
+
+"""
+Page information
+"""
+type PageInfo {
+  page: Int!
+  resultsPerPage: Int!
+  totalResults: Int64!
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+}
+
+"""
+Pagination filters
+"""
+input Pagination {
+  page: Int
+  resultsPerPage: Int
 }
 
 type Query {
-  todos: [Todo!]!
-}
+  """
+  Refresh access token though refresh token provided inside Authorization header
+  """
+  refreshAccessToken: Token!
 
-input NewTodo {
-  text: String!
+  """
+  Get currently authenticated user info
+  """
+  user(userId: String): User! @isAuthenticated
+
+  """
+  Get the list of all users. Admin user is required.
+  """
+  users(pagination: Pagination): UsersConnection! @hasPermission(permission: "read:admin")
 }
 
 type Mutation {
-  createTodo(input: NewTodo!): Todo!
+  """
+  User login. Unauthenticated user only.
+  """
+  login(credential: String!, password: String!): UserWithToken!
+
+  """
+  User registration. Unauthenticated user only.
+  """
+  register(userInfo: UserRegistrationInput!): UserWithToken!
 }

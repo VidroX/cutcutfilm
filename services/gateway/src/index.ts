@@ -2,7 +2,7 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import { readFileSync } from 'fs';
-import { ApolloGateway } from '@apollo/gateway';
+import { ApolloGateway, RemoteGraphQLDataSource } from '@apollo/gateway';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import { expressMiddleware } from '@apollo/server/express4';
@@ -26,23 +26,59 @@ import {
 import { createPromiseClient } from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-node';
 import { IdentityService } from './proto/identity/v1/identity_connect.js';
-import { ContextUser } from './context_user.js';
 
 const app = express();
 const httpServer = http.createServer(app);
 
 const supergraphPath = path.join(rootDir, '..', 'supergraph.graphql');
 
-const gateway = new ApolloGateway({
-	debug: DEBUG,
-	supergraphSdl: readFileSync(supergraphPath).toString(),
-});
-
 const identityServiceConnector = createConnectTransport({
 	baseUrl: IDENTITY_SERVICE_LOCATION,
 	httpVersion: '2',
 });
 const identityServiceClient = createPromiseClient(IdentityService, identityServiceConnector);
+
+let keySet: any = '';
+
+try {
+	const identityKeySet = await identityServiceClient.getKeySet(
+		{},
+		{ headers: { 'x-api-key': IDENTITY_SERVICE_API_KEY } }
+	);
+
+	const parsedKeySet = JSON.parse(
+		Buffer.from(identityKeySet.encodedKeys, 'base64').toString('utf8')
+	);
+
+	keySet = parsedKeySet;
+} catch (err: any) {
+	if (DEBUG) {
+		console.log('Unable to get keyset from Identity Service:', err);
+	}
+
+	throw err;
+}
+
+app.get('/certs', (req, res) => {
+	res.send(keySet);
+});
+
+const gateway = new ApolloGateway({
+	debug: DEBUG,
+	supergraphSdl: readFileSync(supergraphPath).toString(),
+	buildService({ url }) {
+		return new RemoteGraphQLDataSource({
+			url,
+			willSendRequest({ request, context }) {
+				if (context?.token == null) {
+					return;
+				}
+
+				request.http?.headers.set('Authorization', context.token);
+			},
+		});
+	},
+});
 
 const debugPlugins = DEBUG
 	? [
@@ -97,10 +133,6 @@ app.use(
 	bodyParser.json({ limit: '10mb' }),
 	expressMiddleware(server, {
 		context: async ({ req }) => {
-			if (req.body?.operationName === 'IntrospectionQuery') {
-				return {};
-			}
-
 			const token = (req.headers.authorization ?? '').trim().replace('Bearer ', '');
 
 			if (token.trim().length < 1) {
@@ -113,15 +145,14 @@ app.use(
 				headers.set('x-api-key', IDENTITY_SERVICE_API_KEY);
 				headers.set('authorization', token);
 
-				const resp = await identityServiceClient.getUserPermissions({}, { headers });
+				const resp = await identityServiceClient.issueServiceToken({}, { headers });
 
-				const user: ContextUser = {
-					userId: resp.userId,
-					permissions: resp.permissions,
-				};
+				return { token: resp.token };
+			} catch (err: any) {
+				if (err?.code !== 2 && DEBUG) {
+					console.log('Unable to verify and issue servicing user token:', err);
+				}
 
-				return { user };
-			} catch (err) {
 				return {};
 			}
 		},

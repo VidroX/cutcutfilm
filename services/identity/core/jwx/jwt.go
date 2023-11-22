@@ -8,58 +8,51 @@ import (
 	"time"
 
 	"github.com/VidroX/cutcutfilm-shared/permissions"
+	"github.com/VidroX/cutcutfilm-shared/tokens"
+	"github.com/VidroX/cutcutfilm-shared/utils"
 	"github.com/VidroX/cutcutfilm/services/identity/core/environment"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-type TokenType string
-
-const (
-	TokenTypeAccess             TokenType = "access"
-	TokenTypeRefresh            TokenType = "refresh"
-	TokenTypeApplicationRequest TokenType = "application_request"
-)
-
-var AllTokenType = []TokenType{
-	TokenTypeAccess,
-	TokenTypeRefresh,
-	TokenTypeApplicationRequest,
+type DurationWrapper struct {
+	time.Duration
 }
 
-func (e TokenType) IsValid() bool {
-	switch e {
-	case TokenTypeAccess, TokenTypeRefresh:
-		return true
-	}
-	return false
+type TokenParams struct {
+	TokenType   tokens.TokenType
+	UserId      *string
+	Permissions []permissions.Permission
+	ExpiryTime  *DurationWrapper
+	AddAudience bool
 }
 
-func (e TokenType) String() string {
-	return string(e)
-}
-
-func CreateToken(tokenType TokenType, userId *string, permissionsSlice []permissions.Permission) string {
-	if tokenType != TokenTypeAccess && tokenType != TokenTypeRefresh && tokenType != TokenTypeApplicationRequest {
-		tokenType = TokenTypeAccess
-	}
-
+func CreateToken(params *TokenParams) string {
 	issueTime := time.Now()
 
 	builder := jwt.NewBuilder().
-		Claim("typ", tokenType).
+		Claim("typ", params.TokenType).
 		Issuer(os.Getenv(environment.KeysTokenIssuer)).
-		Audience([]string{os.Getenv(environment.KeysTokenIssuer)}).
 		IssuedAt(issueTime)
 
-	if tokenType == TokenTypeRefresh && userId != nil {
-		builder = builder.Expiration(issueTime.Add(time.Hour * 24 * 7)).Subject(*userId)
-	} else if tokenType == TokenTypeAccess && userId != nil {
-		builder = builder.Expiration(issueTime.Add(time.Minute*15)).
-			Subject(*userId).
-			Claim("permissions", permissions.BuildPermissionsString(permissionsSlice))
-	} else {
-		builder = builder.Expiration(issueTime.Add(time.Minute))
+	if params.AddAudience {
+		builder = builder.Audience([]string{os.Getenv(environment.KeysTokenIssuer)})
+	}
+
+	if params.ExpiryTime != nil {
+		builder = builder.Expiration(issueTime.Add(params.ExpiryTime.Duration))
+	} else if params.TokenType == tokens.TokenTypeRefresh {
+		builder = builder.Expiration(issueTime.Add(time.Hour * 24 * 7))
+	} else if params.TokenType == tokens.TokenTypeAccess {
+		builder = builder.Expiration(issueTime.Add(time.Minute * 15))
+	}
+
+	if params.TokenType == tokens.TokenTypeRefresh || params.TokenType == tokens.TokenTypeAccess {
+		builder = builder.Subject(*params.UserId)
+	}
+
+	if len(params.Permissions) > 0 {
+		builder = builder.Claim("permissions", permissions.BuildPermissionsString(params.Permissions))
 	}
 
 	tok, err := builder.Build()
@@ -90,7 +83,7 @@ func CreateToken(tokenType TokenType, userId *string, permissionsSlice []permiss
 	return string(signed)
 }
 
-func ValidateToken(token string) (jwt.Token, *TokenType) {
+func ValidateToken(token string) (jwt.Token, *tokens.TokenType) {
 	var rawPublicKey interface{}
 	var publicKey = CutcutfilmKeys.PublicKey
 
@@ -115,9 +108,9 @@ func ValidateToken(token string) (jwt.Token, *TokenType) {
 	tokenType, ok := verifiedToken.Get("typ")
 	stringTokenType, ok2 := tokenType.(string)
 
-	isValidTokenType := ok2 && (strings.EqualFold(stringTokenType, TokenTypeAccess.String()) ||
-		strings.EqualFold(stringTokenType, TokenTypeRefresh.String()) ||
-		strings.EqualFold(stringTokenType, TokenTypeApplicationRequest.String()))
+	isValidTokenType := ok2 && (strings.EqualFold(stringTokenType, tokens.TokenTypeAccess.String()) ||
+		strings.EqualFold(stringTokenType, tokens.TokenTypeRefresh.String()) ||
+		strings.EqualFold(stringTokenType, tokens.TokenTypeApplicationRequest.String()))
 	isProperToken := ok && isValidTokenType
 
 	if !isProperToken {
@@ -127,11 +120,17 @@ func ValidateToken(token string) (jwt.Token, *TokenType) {
 	audience, ok := verifiedToken.Get("aud")
 	convertedAudience, ok2 := audience.([]string)
 
-	if !slices.Contains(convertedAudience, os.Getenv(environment.KeysTokenIssuer)) {
+	permissionString, ok3 := verifiedToken.Get("permissions")
+	convertedPermissionString, ok4 := permissionString.(string)
+
+	hasAudience := slices.Contains(convertedAudience, os.Getenv(environment.KeysTokenIssuer))
+	hasPermissions := ok3 && ok4 && !utils.UtilString(convertedPermissionString).IsEmpty()
+
+	if !hasAudience && !hasPermissions {
 		return nil, nil
 	}
 
-	normalizedTokenType := TokenType(stringTokenType)
+	normalizedTokenType := tokens.TokenType(stringTokenType)
 
 	return verifiedToken, &normalizedTokenType
 }

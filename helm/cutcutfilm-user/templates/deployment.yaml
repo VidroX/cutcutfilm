@@ -50,6 +50,26 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.services.user.secretName }}
                   key: identity-api-key
+            - name: ADMIN_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.services.user.secretName }}
+                  key: admin-id
+            - name: ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.services.user.secretName }}
+                  key: admin-email
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.services.identity.secretName }}
+                  key: admin-username
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.services.identity.secretName }}
+                  key: admin-password
           ports:
             - containerPort: {{ .Values.services.user.containerPort }}
           volumeMounts:

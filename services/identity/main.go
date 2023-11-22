@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"connectrpc.com/grpcreflect"
+	"github.com/VidroX/cutcutfilm-shared/tokens"
 	"github.com/VidroX/cutcutfilm-shared/utils"
 
 	"connectrpc.com/connect"
@@ -125,7 +126,7 @@ func serverInterceptor(next connect.UnaryFunc) connect.UnaryFunc {
 func environmentInterceptor(ctx context.Context, headers http.Header) (context.Context, error) {
 	lang := headers.Get("accept-language")
 	normalizedLang := "en"
-	if len(lang) >= 0 {
+	if len(lang) > 0 {
 		normalizedLang = lang
 	}
 
@@ -158,12 +159,9 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 
 	authToken := headers.Get("authorization")
 	if utils.UtilString(authToken).IsEmpty() {
-		return nil, status.Errorf(
-			codes.Unauthenticated,
-			translator.
-				WithKey(resources.KeysInvalidOrExpiredTokenError).
-				Translate(localizer),
-		)
+		ctx = context.WithValue(ctx, "authorized", false)
+
+		return ctx, nil
 	}
 
 	searchRegex := regexp.MustCompile("(?i)" + "Bearer")
@@ -180,7 +178,7 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 		)
 	}
 
-	if *tokenType != jwx.TokenTypeApplicationRequest {
+	if *tokenType != tokens.TokenTypeApplicationRequest {
 		userId, exists := validatedToken.Get("sub")
 
 		if !exists {
@@ -222,6 +220,7 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 		permissionsString = ""
 	}
 
+	ctx = context.WithValue(ctx, "authorized", true)
 	ctx = context.WithValue(ctx, "user_token_type", tokenType)
 	ctx = context.WithValue(ctx, "user_token_issuer", issuer.(string))
 	ctx = context.WithValue(ctx, "user_permissions", permissions.ParsePermissionsString(permissionsString.(string)))

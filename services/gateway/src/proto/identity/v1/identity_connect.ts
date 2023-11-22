@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetUserPermissionsRequest, GetUserPermissionsResponse, IssueTokensRequest, IssueTokensResponse, RefreshTokenRequest, RefreshTokenResponse, SetUserPermissionsRequest, SetUserPermissionsResponse } from "./identity_pb.js";
+import { GetKeySetRequest, GetKeySetResponse, GetUserPermissionsRequest, GetUserPermissionsResponse, IssueServiceTokenRequest, IssueServiceTokenResponse, IssueTokensRequest, IssueTokensResponse, RefreshTokenRequest, RefreshTokenResponse, SetUserPermissionsRequest, SetUserPermissionsResponse, ValidateUserRequest, ValidateUserResponse } from "./identity_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -19,6 +19,15 @@ export const IdentityService = {
       name: "IssueTokens",
       I: IssueTokensRequest,
       O: IssueTokensResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.IssueServiceToken
+     */
+    issueServiceToken: {
+      name: "IssueServiceToken",
+      I: IssueServiceTokenRequest,
+      O: IssueServiceTokenResponse,
       kind: MethodKind.Unary,
     },
     /**
@@ -46,6 +55,24 @@ export const IdentityService = {
       name: "GetUserPermissions",
       I: GetUserPermissionsRequest,
       O: GetUserPermissionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.ValidateUser
+     */
+    validateUser: {
+      name: "ValidateUser",
+      I: ValidateUserRequest,
+      O: ValidateUserResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc identity.v1.IdentityService.GetKeySet
+     */
+    getKeySet: {
+      name: "GetKeySet",
+      I: GetKeySetRequest,
+      O: GetKeySetResponse,
       kind: MethodKind.Unary,
     },
   }

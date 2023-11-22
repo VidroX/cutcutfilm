@@ -3,7 +3,7 @@ name: "cutcutfilm-gateway-dev"
 
 host: "ccf-dev.vidrox.me"
 
-debug: false
+debug: true
 environmentType: "development"
 
 imagePullSecrets: [{ name: cutcutfilm-ghcr }]

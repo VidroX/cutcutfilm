@@ -63,12 +63,12 @@ spec:
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.services.identity.secretName }}
+                  name: {{ .Values.services.user.secretName }}
                   key: admin-username
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.services.identity.secretName }}
+                  name: {{ .Values.services.user.secretName }}
                   key: admin-password
           ports:
             - containerPort: {{ .Values.services.user.containerPort }}

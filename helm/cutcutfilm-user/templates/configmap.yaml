@@ -5,4 +5,4 @@ metadata:
   namespace: {{ .Values.namespace }}
 data:
   user_service_database_uri: "{{ .Values.services.userDatabase.name }}.{{ .Values.namespace }}.svc.cluster.local"
-  identity_service_location: "{{ .Values.services.identity.name }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.services.identity.port }}"
+  identity_service_location: "http://{{ .Values.services.identity.name }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.services.identity.port }}"

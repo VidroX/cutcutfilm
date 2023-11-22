@@ -61,8 +61,6 @@ jobs:
           push: true
           context: ${{ env.WORKING_DIRECTORY }}
           platforms: linux/amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           build-args: |
             GIT_USER=${{ secrets.GIT_USER }}
             GIT_TOKEN=${{ secrets.GIT_TOKEN }}

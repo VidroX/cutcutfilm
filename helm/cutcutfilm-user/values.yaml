@@ -16,9 +16,11 @@ services:
     secretName: "ccf-secret"
     image: ""
     containerPort: 4001
+    jwtIssuer: "https://cutcutfilm.com/user-service"
   identity:
     name: "cutcutfilm-identity"
     port: 4002
+    jwtIssuer: "https://cutcutfilm.com/identity-service"
   userDatabase:
     name: "user-db-postgresql"
     databaseName: "cutcutfilm-user"

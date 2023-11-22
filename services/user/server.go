@@ -58,10 +58,10 @@ func main() {
 		EnvironmentType: os.Getenv(environment.KeysEnvironmentType),
 		JWTIssuer:       os.Getenv(environment.KeysTokenIssuer),
 		JWTAudiences: []string{
-			os.Getenv(environment.KeysIdentityServiceLocation),
+			os.Getenv(environment.KeysIdentityJWTIssuer),
 		},
 		AllowedJWTIssuers: []string{
-			os.Getenv(environment.KeysIdentityServiceLocation),
+			os.Getenv(environment.KeysIdentityJWTIssuer),
 		},
 	})
 

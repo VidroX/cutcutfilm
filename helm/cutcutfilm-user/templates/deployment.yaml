@@ -43,6 +43,16 @@ spec:
               value: "{{ .Values.services.userDatabase.databaseName }}"
             - name: POSTGRESQL_PORT_NUMBER
               value: "{{ .Values.services.userDatabase.port }}"
+            - name: JWT_ISSUER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.user.name }}-config
+                  key: jwt_issuer
+            - name: IDENTITY_JWT_ISSUER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.user.name }}-config
+                  key: identity_jwt_issuer
             - name: IDENTITY_SERVICE_LOCATION
               valueFrom:
                 configMapKeyRef:

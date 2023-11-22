@@ -6,3 +6,4 @@ metadata:
 data:
   debug: "{{ .Values.debug }}"
   identity_service_database_uri: "{{ .Values.services.identityDatabase.name }}.{{ .Values.namespace }}.svc.cluster.local"
+  jwt_issuer: "{{ .Values.services.identity.jwtIssuer }}"

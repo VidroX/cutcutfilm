@@ -29,6 +29,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.services.identity.name }}-config
                   key: identity_service_database_uri
+            - name: JWT_ISSUER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.identity.name }}-config
+                  key: jwt_issuer
             - name: POSTGRESQL_USERNAME
               valueFrom:
                 secretKeyRef:

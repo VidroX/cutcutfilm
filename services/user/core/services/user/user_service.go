@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"log"
 	"os"
 	"slices"
 	"strings"
@@ -112,6 +113,10 @@ func (service *userService) GetUserPermissions(ctx context.Context, userId strin
 	resp, err := (*service.identityServiceClient).GetUserPermissions(ctx, req)
 
 	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println(err)
+		}
+
 		return nil, &general.ErrInternal
 	}
 
@@ -158,7 +163,7 @@ func (service *userService) Login(ctx context.Context, credential string, passwo
 
 	userTokens, err2 := getUserTokens(service.identityServiceClient, ctx, dbUser.ID)
 
-	if err != nil || userTokens == nil {
+	if err != nil {
 		return nil, []*nebulaErrors.APIError{err2}
 	}
 
@@ -166,11 +171,11 @@ func (service *userService) Login(ctx context.Context, credential string, passwo
 		User: dbUser,
 		AccessToken: &model.Token{
 			Type:  tokens.TokenTypeAccess,
-			Token: (*userTokens).Access,
+			Token: userTokens.Access,
 		},
 		RefreshToken: &model.Token{
 			Type:  tokens.TokenTypeRefresh,
-			Token: (*userTokens).Refresh,
+			Token: userTokens.Refresh,
 		},
 	}, nil
 }
@@ -211,7 +216,7 @@ func (service *userService) Register(ctx context.Context, userInfo model.UserReg
 
 	userTokens, err2 := getUserTokens(service.identityServiceClient, ctx, dbUser.ID)
 
-	if err != nil || userTokens == nil {
+	if err != nil {
 		return nil, []*nebulaErrors.APIError{err2}
 	}
 
@@ -219,11 +224,11 @@ func (service *userService) Register(ctx context.Context, userInfo model.UserReg
 		User: &dbUser,
 		AccessToken: &model.Token{
 			Type:  tokens.TokenTypeAccess,
-			Token: (*userTokens).Access,
+			Token: userTokens.Access,
 		},
 		RefreshToken: &model.Token{
 			Type:  tokens.TokenTypeRefresh,
-			Token: (*userTokens).Refresh,
+			Token: userTokens.Refresh,
 		},
 	}, nil
 }
@@ -247,6 +252,10 @@ func (service *userService) RefreshAccessToken(ctx context.Context) (*model.Toke
 	resp, err := (*service.identityServiceClient).RefreshToken(ctx, req)
 
 	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println(err)
+		}
+
 		return nil, &general.ErrInternal
 	}
 
@@ -295,6 +304,10 @@ func (service *userService) SetUserPermissions(ctx context.Context, userInfo mod
 	_, err := (*service.identityServiceClient).SetUserPermissions(ctx, req)
 
 	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println(err)
+		}
+
 		return nil, &general.ErrInternal
 	}
 
@@ -307,7 +320,11 @@ func (service *userService) SetUserPermissions(ctx context.Context, userInfo mod
 	return user, nil
 }
 
-func getUserTokens(client *identityv1connect.IdentityServiceClient, ctx context.Context, userId string) (*model.TokenCollection, *nebulaErrors.APIError) {
+func getUserTokens(client *identityv1connect.IdentityServiceClient, ctx context.Context, userId string) (model.TokenCollection, *nebulaErrors.APIError) {
+	if client == nil {
+		return model.TokenCollection{}, &general.ErrInternal
+	}
+
 	req := connect.NewRequest(&identityv1.IssueTokensRequest{
 		UserId: userId,
 	})
@@ -315,17 +332,17 @@ func getUserTokens(client *identityv1connect.IdentityServiceClient, ctx context.
 	req.Header().Add("X-Api-Key", os.Getenv(environment.KeysIdentityServiceApiKey))
 	req.Header().Add("Authorization", jwx.CreateApplicationRequestToken())
 
-	if client == nil {
-		return nil, &general.ErrInternal
-	}
-
 	resp, err := (*client).IssueTokens(ctx, req)
 
 	if err != nil {
-		return nil, &general.ErrInternal
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println(err)
+		}
+
+		return model.TokenCollection{}, &general.ErrInternal
 	}
 
-	return &model.TokenCollection{
+	return model.TokenCollection{
 		Access:  resp.Msg.GetAccessToken(),
 		Refresh: resp.Msg.GetRefreshToken(),
 	}, nil

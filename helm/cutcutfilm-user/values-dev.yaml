@@ -16,9 +16,11 @@ services:
     secretName: "ccf-dev-secret"
     image: ""
     containerPort: 4001
+    jwtIssuer: "https://ccf-dev.vidrox.me/user-service"
   identity:
     name: "cutcutfilm-identity-dev"
     port: 4002
+    jwtIssuer: "https://ccf-dev.vidrox.me/identity-service"
   userDatabase:
     name: "user-db-postgresql"
     databaseName: "cutcutfilm-user"

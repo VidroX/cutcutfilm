@@ -158,7 +158,7 @@ func (service *userService) Login(ctx context.Context, credential string, passwo
 
 	userTokens, err2 := getUserTokens(service.identityServiceClient, ctx, dbUser.ID)
 
-	if err != nil {
+	if err != nil || userTokens == nil {
 		return nil, []*nebulaErrors.APIError{err2}
 	}
 
@@ -166,11 +166,11 @@ func (service *userService) Login(ctx context.Context, credential string, passwo
 		User: dbUser,
 		AccessToken: &model.Token{
 			Type:  tokens.TokenTypeAccess,
-			Token: userTokens.Access,
+			Token: (*userTokens).Access,
 		},
 		RefreshToken: &model.Token{
 			Type:  tokens.TokenTypeRefresh,
-			Token: userTokens.Refresh,
+			Token: (*userTokens).Refresh,
 		},
 	}, nil
 }
@@ -211,7 +211,7 @@ func (service *userService) Register(ctx context.Context, userInfo model.UserReg
 
 	userTokens, err2 := getUserTokens(service.identityServiceClient, ctx, dbUser.ID)
 
-	if err != nil {
+	if err != nil || userTokens == nil {
 		return nil, []*nebulaErrors.APIError{err2}
 	}
 
@@ -219,11 +219,11 @@ func (service *userService) Register(ctx context.Context, userInfo model.UserReg
 		User: &dbUser,
 		AccessToken: &model.Token{
 			Type:  tokens.TokenTypeAccess,
-			Token: userTokens.Access,
+			Token: (*userTokens).Access,
 		},
 		RefreshToken: &model.Token{
 			Type:  tokens.TokenTypeRefresh,
-			Token: userTokens.Refresh,
+			Token: (*userTokens).Refresh,
 		},
 	}, nil
 }

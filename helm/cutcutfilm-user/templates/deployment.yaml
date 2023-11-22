@@ -83,6 +83,8 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.services.user.secretName }}
                   key: admin-password
+            - name: DATA_PATH
+              value: "{{ .Values.persistence.mountPath }}"
           ports:
             - containerPort: {{ .Values.services.user.containerPort }}
           volumeMounts:

@@ -45,6 +45,10 @@ func main() {
 
 	debug := strings.EqualFold(os.Getenv(environment.KeysDebug), "True")
 
+	if debug {
+		log.Printf("Storage mounted at: %s\n", os.Getenv(environment.KeysDataPath))
+	}
+
 	private, public := jwx.InitKeySet()
 
 	jwx.CutcutfilmKeys = &jwx.Keys{

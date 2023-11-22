@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -46,7 +47,7 @@ func main() {
 	environment.LoadEnvironment(nil)
 
 	port := os.Getenv(environment.KeysPort)
-	debug := os.Getenv(environment.KeysDebug) == "True"
+	debug := strings.EqualFold(os.Getenv(environment.KeysDebug), "True")
 
 	if port == "" {
 		port = defaultPort
@@ -64,6 +65,10 @@ func main() {
 			os.Getenv(environment.KeysIdentityJWTIssuer),
 		},
 	})
+
+	if debug {
+		log.Printf("Storage mounted at: %s\n", os.Getenv(environment.KeysDataPath))
+	}
 
 	db := initDatabase()
 

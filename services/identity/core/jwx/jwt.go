@@ -114,6 +114,10 @@ func ValidateToken(token string) (jwt.Token, *tokens.TokenType) {
 	isProperToken := ok && isValidTokenType
 
 	if !isProperToken {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Provided user does not have a valid token type")
+		}
+
 		return nil, nil
 	}
 
@@ -127,6 +131,10 @@ func ValidateToken(token string) (jwt.Token, *tokens.TokenType) {
 	hasPermissions := ok3 && ok4 && !utils.UtilString(convertedPermissionString).IsEmpty()
 
 	if !hasAudience && !hasPermissions {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Provided user token does not have both aud and permissions claim")
+		}
+
 		return nil, nil
 	}
 

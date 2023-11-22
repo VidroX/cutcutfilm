@@ -149,6 +149,10 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 	}
 
 	if headers.Get("x-api-key") != os.Getenv(environment.KeysAPIKey) {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Provided x-api-key does not match")
+		}
+
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.
@@ -159,9 +163,17 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 
 	authToken := headers.Get("authorization")
 	if utils.UtilString(authToken).IsEmpty() {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Provided auth token is empty")
+		}
+
 		ctx = context.WithValue(ctx, "authorized", false)
 
 		return ctx, nil
+	}
+
+	if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+		log.Printf("Authorizing user with the token %s\n", authToken)
 	}
 
 	searchRegex := regexp.MustCompile("(?i)" + "Bearer")
@@ -170,6 +182,10 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 	validatedToken, tokenType := jwx.ValidateToken(token)
 
 	if validatedToken == nil || tokenType == nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Could not validate user token")
+		}
+
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.
@@ -182,6 +198,10 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 		userId, exists := validatedToken.Get("sub")
 
 		if !exists {
+			if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+				log.Println("Provided user token does not have sub claim")
+			}
+
 			return nil, status.Errorf(
 				codes.Unauthenticated,
 				translator.
@@ -207,6 +227,10 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 	issuer, exists := validatedToken.Get("iss")
 
 	if !exists {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Provided user token does not have iss claim")
+		}
+
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.

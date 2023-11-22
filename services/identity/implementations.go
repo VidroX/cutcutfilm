@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
+	"os"
 	"slices"
+	"strings"
 	"time"
 
 	b64 "encoding/base64"
@@ -14,6 +17,7 @@ import (
 	"github.com/VidroX/cutcutfilm-shared/tokens"
 	"github.com/VidroX/cutcutfilm-shared/translator"
 	"github.com/VidroX/cutcutfilm-shared/utils"
+	"github.com/VidroX/cutcutfilm/services/identity/core/environment"
 	"github.com/VidroX/cutcutfilm/services/identity/core/jwx"
 	pb "github.com/VidroX/cutcutfilm/services/identity/proto/identity/v1"
 	"github.com/VidroX/cutcutfilm/services/identity/resources"
@@ -33,6 +37,10 @@ func (s *server) IssueTokens(ctx context.Context, req *connect.Request[pb.IssueT
 	userTokenType, ok2 := ctx.Value("user_token_type").(*tokens.TokenType)
 
 	if !ok || !isAuthorized || !ok2 || userTokenType == nil || *userTokenType != tokens.TokenTypeApplicationRequest {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot issue tokens: user is not authorized or does not have a valid token type")
+		}
+
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
@@ -43,12 +51,20 @@ func (s *server) IssueTokens(ctx context.Context, req *connect.Request[pb.IssueT
 	_, err := uuid.Parse(userId)
 
 	if utils.UtilString(userId).IsEmpty() || err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot issue tokens: userId is empty")
+		}
+
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysUserRequiredError).Translate(localizer))
 	}
 
 	_, err2 := s.services.PermissionsService.GetOrSetDefaultUserPermissions(userId)
 
 	if err2 != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot issue tokens: permissions fetch failed")
+		}
+
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
@@ -77,6 +93,10 @@ func (s *server) IssueServiceToken(ctx context.Context, req *connect.Request[pb.
 	userTokenType, ok3 := ctx.Value("user_token_type").(*tokens.TokenType)
 
 	if !ok || !isAuthorized || !ok2 || !ok3 || userTokenType == nil || *userTokenType == tokens.TokenTypeApplicationRequest {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot issue service token: user is not authorized or does not have a valid token type")
+		}
+
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
@@ -86,12 +106,20 @@ func (s *server) IssueServiceToken(ctx context.Context, req *connect.Request[pb.
 	_, err := uuid.Parse(userId)
 
 	if utils.UtilString(userId).IsEmpty() || err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot issue service token: userId is empty")
+		}
+
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysUserRequiredError).Translate(localizer))
 	}
 
 	permissionsSlice, err2 := s.services.PermissionsService.GetOrSetDefaultUserPermissions(userId)
 
 	if err2 != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot issue service token: permission fetch failed")
+		}
+
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
@@ -117,6 +145,10 @@ func (s *server) RefreshToken(ctx context.Context, req *connect.Request[pb.Refre
 	userTokenType, ok3 := ctx.Value("user_token_type").(*tokens.TokenType)
 
 	if !ok || !isAuthorized || !ok2 || !ok3 || userTokenType == nil || *userTokenType != tokens.TokenTypeRefresh {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot issue new access token: user is not authorized or does not have a valid token type")
+		}
+
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
@@ -126,6 +158,10 @@ func (s *server) RefreshToken(ctx context.Context, req *connect.Request[pb.Refre
 	permissionsSlice, err := s.services.PermissionsService.GetOrSetDefaultUserPermissions(userId)
 
 	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot issue service token: permissions fetch failed")
+		}
+
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
@@ -151,6 +187,10 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 	userPermissions, ok4 := ctx.Value("user_permissions").([]permissions.Permission)
 
 	if !ok || !isAuthorized || !ok2 || !ok3 || !ok4 || userPermissions == nil || userTokenType == nil || *userTokenType != tokens.TokenTypeAccess {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot set user permissions: user is not authorized or does not have a valid token type")
+		}
+
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
@@ -170,6 +210,10 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 	)
 
 	if !isAdmin {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Printf("Cannot set user permissions: user %s is not admin\n", userId)
+		}
+
 		return nil, status.Errorf(
 			codes.Internal,
 			translator.WithKey(resources.KeysNotEnoughPermissions).Translate(localizer),
@@ -187,6 +231,10 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 		)
 
 		if !hasAdminReadPermission || !hasAdminWritePermission {
+			if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+				log.Println("Cannot set user permissions: user cannot remove admin permissions from itself")
+			}
+
 			return nil, status.Errorf(
 				codes.Internal,
 				translator.WithKey(resources.KeysNotEnoughPermissions).Translate(localizer),
@@ -197,6 +245,10 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 	err := s.services.PermissionsService.SetUserPermissions(requestedUserId, permissionsSlice)
 
 	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot set user permissions")
+		}
+
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
@@ -228,6 +280,10 @@ func (s *server) GetUserPermissions(ctx context.Context, req *connect.Request[pb
 	userPermissions, _ := ctx.Value("user_permissions").([]permissions.Permission)
 
 	if !ok || !isAuthorized || !ok2 || !ok3 || userTokenType == nil || *userTokenType != tokens.TokenTypeAccess {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot get user permissions: user is not authorized or does not have a valid token type")
+		}
+
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
@@ -245,6 +301,10 @@ func (s *server) GetUserPermissions(ctx context.Context, req *connect.Request[pb
 	)
 
 	if !isAdmin && requestedUserId != userId {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Printf("Cannot get user permissions: user %s does not have admin permissions\n", userId)
+		}
+
 		return nil, status.Errorf(
 			codes.Internal,
 			translator.WithKey(resources.KeysNotEnoughPermissions).Translate(localizer),
@@ -261,6 +321,10 @@ func (s *server) GetUserPermissions(ctx context.Context, req *connect.Request[pb
 	}
 
 	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot get user permissions")
+		}
+
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
@@ -281,6 +345,10 @@ func (s *server) ValidateUser(ctx context.Context, req *connect.Request[pb.Valid
 	userTokenType, ok3 := ctx.Value("user_token_type").(*tokens.TokenType)
 
 	if !ok || !isAuthorized || !ok2 || !ok3 || userTokenType == nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot validate user: user is not authorized or does not have a valid token type")
+		}
+
 		return nil, status.Errorf(
 			codes.Unauthenticated,
 			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
@@ -293,6 +361,10 @@ func (s *server) ValidateUser(ctx context.Context, req *connect.Request[pb.Valid
 	permissionsSlice, err = s.services.PermissionsService.GetOrSetDefaultUserPermissions(userId)
 
 	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot validate user: cannot get or set user permissions")
+		}
+
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
@@ -307,6 +379,10 @@ func (s *server) GetKeySet(ctx context.Context, req *connect.Request[pb.GetKeySe
 	publicKey := jwx.CutcutfilmKeys.PublicKey
 
 	if publicKey == nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot get keyset: public key not found")
+		}
+
 		return connect.NewResponse(&pb.GetKeySetResponse{}), nil
 	}
 
@@ -316,6 +392,10 @@ func (s *server) GetKeySet(ctx context.Context, req *connect.Request[pb.GetKeySe
 	jsonPubSet, err := json.Marshal(keySet)
 
 	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot get keyset: cannot marshal keyset to JSON")
+		}
+
 		return connect.NewResponse(&pb.GetKeySetResponse{}), nil
 	}
 

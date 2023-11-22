@@ -8,10 +8,6 @@ environmentType: "production"
 
 imagePullSecrets: [{ name: cutcutfilm-ghcr }]
 
-persistence:
-  claimName: "cutcutfilm-storage"
-  mountPath: /app/cutcutfilm/data
-
 services:
   gateway:
     replicas: 1

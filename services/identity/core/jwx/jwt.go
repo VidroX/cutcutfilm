@@ -99,7 +99,7 @@ func ValidateToken(token string) (jwt.Token, *tokens.TokenType) {
 
 	verifiedToken, err := jwt.Parse([]byte(normalizedToken), jwt.WithKey(jwa.ES512, rawPublicKey))
 	if err != nil {
-		if os.Getenv(environment.KeysDebug) == "True" {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
 			log.Printf("Failed to verify JWS (%s): %s\n", normalizedToken, err)
 		}
 		return nil, nil

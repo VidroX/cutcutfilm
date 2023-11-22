@@ -1,9 +1,13 @@
 {
-    "generalErrors": {
+    "errors": {
         "validation": {
             "fieldRequired": "This field is required",
             "incorrectEmail": "Please, enter a correct E-Mail address",
-            "unknownValidationError": "Please, check this field for errors"
+            "unknownValidationError": "Please, check this field for errors",
+            "userNotFound": "Requested user not found",
+            "credentialUserNotFound": "User with the provided Username/E-Mail and Password not found",
+            "userEmailRegistered": "User with the given E-Mail is already registered",
+            "userNameRegistered": "User with the given Username is already registered"
         },
         "notEnoughPermissions": "You don't have enough permissions to perform this action",
         "internalError": "An internal error has occurred"

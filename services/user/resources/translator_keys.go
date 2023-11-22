@@ -2,11 +2,15 @@ package resources
 
 // General Errors
 
-const KeysNotEnoughPermissions = "generalErrors.notEnoughPermissions"
-const KeysInternalError = "generalErrors.internalError"
+const KeysNotEnoughPermissions = "errors.notEnoughPermissions"
+const KeysInternalError = "errors.internalError"
 
 // Validation Errors
 
-const KeysValidationRequiredError = "generalErrors.validation.fieldRequired"
-const KeysValidationIncorrectEmailError = "generalErrors.validation.incorrectEmail"
-const KeysValidationUnknownError = "generalErrors.validation.unknownValidationError"
+const KeysValidationRequiredError = "errors.validation.fieldRequired"
+const KeysValidationIncorrectEmailError = "errors.validation.incorrectEmail"
+const KeysValidationUnknownError = "errors.validation.unknownValidationError"
+const KeysValidationUserNotFoundError = "errors.validation.userNotFound"
+const KeysValidationCredentialUserNotFoundError = "errors.validation.credentialUserNotFound"
+const KeysValidationUserEmailAlreadyRegisteredError = "errors.validation.userEmailRegistered"
+const KeysValidationUserNameAlreadyRegisteredError = "errors.validation.userNameRegistered"

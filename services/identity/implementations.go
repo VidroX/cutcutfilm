@@ -46,6 +46,12 @@ func (s *server) IssueTokens(ctx context.Context, req *connect.Request[pb.IssueT
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysUserRequiredError).Translate(localizer))
 	}
 
+	_, err2 := s.services.PermissionsService.GetOrSetDefaultUserPermissions(userId)
+
+	if err2 != nil {
+		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
+	}
+
 	return connect.NewResponse(&pb.IssueTokensResponse{
 		AccessToken: jwx.CreateToken(&jwx.TokenParams{
 			TokenType:   tokens.TokenTypeAccess,
@@ -160,7 +166,7 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 
 	isAdmin := slices.ContainsFunc(
 		userPermissions,
-		func(p permissions.Permission) bool { return p.Action == "write:admin" },
+		func(p permissions.Permission) bool { return p.Action == permissions.AdminWritePermissionAction },
 	)
 
 	if !isAdmin {
@@ -173,11 +179,11 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 	if requestedUserId == userId {
 		hasAdminWritePermission := slices.ContainsFunc(
 			permissionsSlice,
-			func(p permissions.Permission) bool { return p.Action == "write:admin" },
+			func(p permissions.Permission) bool { return p.Action == permissions.AdminWritePermissionAction },
 		)
 		hasAdminReadPermission := slices.ContainsFunc(
 			permissionsSlice,
-			func(p permissions.Permission) bool { return p.Action == "read:admin" },
+			func(p permissions.Permission) bool { return p.Action == permissions.AdminReadPermissionAction },
 		)
 
 		if !hasAdminReadPermission || !hasAdminWritePermission {
@@ -235,7 +241,7 @@ func (s *server) GetUserPermissions(ctx context.Context, req *connect.Request[pb
 
 	isAdmin := slices.ContainsFunc(
 		userPermissions,
-		func(p permissions.Permission) bool { return p.Action == "read:admin" },
+		func(p permissions.Permission) bool { return p.Action == permissions.AdminReadPermissionAction },
 	)
 
 	if !isAdmin && requestedUserId != userId {

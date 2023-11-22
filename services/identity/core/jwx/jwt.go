@@ -9,6 +9,7 @@ import (
 
 	"github.com/VidroX/cutcutfilm-shared/permissions"
 	"github.com/VidroX/cutcutfilm-shared/tokens"
+	"github.com/VidroX/cutcutfilm-shared/utils"
 	"github.com/VidroX/cutcutfilm/services/identity/core/environment"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
@@ -119,7 +120,13 @@ func ValidateToken(token string) (jwt.Token, *tokens.TokenType) {
 	audience, ok := verifiedToken.Get("aud")
 	convertedAudience, ok2 := audience.([]string)
 
-	if !slices.Contains(convertedAudience, os.Getenv(environment.KeysTokenIssuer)) {
+	permissionString, ok3 := verifiedToken.Get("permissions")
+	convertedPermissionString, ok4 := permissionString.(string)
+
+	hasAudience := slices.Contains(convertedAudience, os.Getenv(environment.KeysTokenIssuer))
+	hasPermissions := ok3 && ok4 && !utils.UtilString(convertedPermissionString).IsEmpty()
+
+	if !hasAudience && !hasPermissions {
 		return nil, nil
 	}
 

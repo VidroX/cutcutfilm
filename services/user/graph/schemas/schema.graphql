@@ -3,6 +3,8 @@ extend schema
 
 directive @isAuthenticated on FIELD_DEFINITION
 directive @hasPermission(permission: String!) on FIELD_DEFINITION|INPUT_FIELD_DEFINITION|ARGUMENT_DEFINITION
+directive @noUser on FIELD_DEFINITION
+directive @refreshToken on FIELD_DEFINITION
 
 """
 Time scalar
@@ -15,12 +17,19 @@ Time scalar
 scalar Int64
 
 """
+TokenType scalar
+"""
+scalar TokenType
+
+"""
 User model
 """
 type User @key(fields: "id") {
   id: ID!
   email: String!
   userName: String!
+  registrationDate: Time
+  permissions: [Permission]
 }
 
 """
@@ -33,11 +42,11 @@ input UserRegistrationInput {
 }
 
 """
-Auth token types
+User permission
 """
-enum TokenType {
-  Access
-  Refresh
+type Permission {
+  action: String!
+  description: String!
 }
 
 """
@@ -55,6 +64,14 @@ type UserWithToken {
   user: User
   accessToken: Token
   refreshToken: Token
+}
+
+"""
+Input with the new Permissions to set for the given userId
+"""
+input SetUserPermissionsInput {
+  userId: String!
+  permissions: [String]!
 }
 
 """
@@ -88,10 +105,10 @@ type Query {
   """
   Refresh access token though refresh token provided inside Authorization header
   """
-  refreshAccessToken: Token!
+  refreshAccessToken: Token! @refreshToken
 
   """
-  Get currently authenticated user info
+  Get currently user info
   """
   user(userId: String): User! @isAuthenticated
 
@@ -105,10 +122,15 @@ type Mutation {
   """
   User login. Unauthenticated user only.
   """
-  login(credential: String!, password: String!): UserWithToken!
+  login(credential: String!, password: String!): UserWithToken! @noUser
 
   """
   User registration. Unauthenticated user only.
   """
-  register(userInfo: UserRegistrationInput!): UserWithToken!
+  register(userInfo: UserRegistrationInput!): UserWithToken! @noUser
+
+  """
+  Set user permissions. Users with write:admin permission only.
+  """
+  setUserPermissions(userInfo: SetUserPermissionsInput!): User! @hasPermission(permission: "write:admin")
 }

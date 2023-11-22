@@ -93,3 +93,9 @@ models:
   PageInfo:
     model:
       - github.com/VidroX/cutcutfilm-shared/pagination.PageInfo
+  TokenType:
+    model:
+      - github.com/VidroX/cutcutfilm-shared/tokens.TokenType
+  Permission:
+    model:
+      - github.com/VidroX/cutcutfilm-shared/permissions.Permission

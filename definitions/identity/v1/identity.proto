@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-option go_package = "github.com/VidroX/cutcutfilm/services/identity/identity";
-
 package identity.v1;
 
 service IdentityService {

@@ -1,7 +1,9 @@
 //go:generate go run github.com/99designs/gqlgen generate
 package graph
 
-import "github.com/VidroX/cutcutfilm/services/user/core/services"
+import (
+	"github.com/VidroX/cutcutfilm/services/user/core/services"
+)
 
 // This file will not be regenerated automatically.
 //

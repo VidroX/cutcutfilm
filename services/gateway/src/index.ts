@@ -70,11 +70,13 @@ const gateway = new ApolloGateway({
 		return new RemoteGraphQLDataSource({
 			url,
 			willSendRequest({ request, context }) {
-				if (context?.token == null) {
-					return;
+				if (context.acceptLanguage != null) {
+					request.http?.headers.set('Accept-Language', context.acceptLanguage);
 				}
 
-				request.http?.headers.set('Authorization', context.token);
+				if (context?.token != null) {
+					request.http?.headers.set('Authorization', context.token);
+				}
 			},
 		});
 	},
@@ -136,7 +138,7 @@ app.use(
 			const token = (req.headers.authorization ?? '').trim().replace('Bearer ', '');
 
 			if (token.trim().length < 1) {
-				return {};
+				return { acceptLanguage: req.headers['accept-language'] ?? 'en' };
 			}
 
 			try {
@@ -147,13 +149,13 @@ app.use(
 
 				const resp = await identityServiceClient.issueServiceToken({}, { headers });
 
-				return { token: resp.token };
+				return { token: resp.token, acceptLanguage: req.headers['accept-language'] ?? 'en' };
 			} catch (err: any) {
 				if (err?.code !== 2 && DEBUG) {
 					console.log('Unable to verify and issue servicing user token:', err);
 				}
 
-				return {};
+				return { acceptLanguage: req.headers['accept-language'] ?? 'en' };
 			}
 		},
 	})

@@ -3,15 +3,21 @@ package graph
 import (
 	"context"
 	"log"
+	"os"
+	"strings"
 
 	"github.com/VidroX/cutcutfilm-shared/translator"
+	"github.com/VidroX/cutcutfilm/services/user/core/environment"
 )
 
 func GetLocalizer(ctx context.Context) *translator.NebulaLocalizer {
 	contextTranslator := ctx.Value(translator.Key).(*translator.NebulaLocalizer)
 
 	if contextTranslator == nil {
-		log.Panic("Could not retrieve translator")
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Panic("Could not retrieve translator")
+		}
+
 		return nil
 	}
 

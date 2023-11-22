@@ -6,15 +6,32 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/VidroX/cutcutfilm-shared/contextuser"
+	sharedErrors "github.com/VidroX/cutcutfilm-shared/errors"
+	"github.com/VidroX/cutcutfilm-shared/permissions"
+	"github.com/VidroX/cutcutfilm/services/user/core/errors/general"
 	"github.com/VidroX/cutcutfilm/services/user/graph"
 	"github.com/VidroX/cutcutfilm/services/user/graph/model"
 )
 
 // FindUserByID is the resolver for the findUserByID field.
 func (r *entityResolver) FindUserByID(ctx context.Context, id string) (*model.User, error) {
-	panic(fmt.Errorf("not implemented: FindUserByID - findUserByID"))
+	currentUser := contextuser.GetCurrentUserFromContext(ctx)
+	canReadRequestedUser := currentUser != nil && (currentUser.HasPermission(permissions.AdminReadPermissionAction) ||
+		(currentUser.UserID == id && currentUser.HasPermission(permissions.UserReadSelfPermissionAction)))
+
+	if !canReadRequestedUser {
+		return nil, sharedErrors.FormatError(graph.GetLocalizer(ctx), &general.ErrNotEnoughPermissions)
+	}
+
+	user, err := r.Resolver.Services.UserService.GetUser(id)
+
+	if err != nil {
+		return nil, sharedErrors.FormatError(graph.GetLocalizer(ctx), err)
+	}
+
+	return user, nil
 }
 
 // Entity returns graph.EntityResolver implementation.

@@ -10,10 +10,14 @@ import (
 )
 
 var (
-	mainErrorCode         = "errors.user.validation."
-	ErrValidationUnknown  = nebulaErrors.APIError{Code: mainErrorCode + "0", Error: errors.New(resources.KeysValidationUnknownError)}
-	ErrValidationRequired = nebulaErrors.APIError{Code: mainErrorCode + "1", Error: errors.New(resources.KeysValidationRequiredError)}
-	ErrIncorrectEmail     = nebulaErrors.APIError{Code: mainErrorCode + "2", Error: errors.New(resources.KeysValidationIncorrectEmailError)}
+	mainErrorCode                       = "errors.user.validation."
+	ErrValidationUnknown                = nebulaErrors.APIError{Code: mainErrorCode + "0", Error: errors.New(resources.KeysValidationUnknownError)}
+	ErrValidationRequired               = nebulaErrors.APIError{Code: mainErrorCode + "1", Error: errors.New(resources.KeysValidationRequiredError)}
+	ErrIncorrectEmail                   = nebulaErrors.APIError{Code: mainErrorCode + "2", Error: errors.New(resources.KeysValidationIncorrectEmailError)}
+	ErrValidationUserNotFound           = nebulaErrors.APIError{Code: mainErrorCode + "3", Error: errors.New(resources.KeysValidationUserNotFoundError)}
+	ErrValidationCredentialUserNotFound = nebulaErrors.APIError{Code: mainErrorCode + "4", Error: errors.New(resources.KeysValidationCredentialUserNotFoundError)}
+	ErrUserEmailAlreadyRegistered       = nebulaErrors.APIError{Code: mainErrorCode + "5", Error: errors.New(resources.KeysValidationUserEmailAlreadyRegisteredError)}
+	ErrUserNameAlreadyRegistered        = nebulaErrors.APIError{Code: mainErrorCode + "6", Error: errors.New(resources.KeysValidationUserNameAlreadyRegisteredError)}
 )
 
 func ConstructValidationError(err nebulaErrors.APIError, field string) *nebulaErrors.APIError {

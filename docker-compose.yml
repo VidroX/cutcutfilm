@@ -42,6 +42,7 @@ services:
       - shared-data:/app/cutcutfilm/data
     depends_on:
       - user-pgsql
+      - identity
     links:
       - user-pgsql
 

@@ -11,11 +11,14 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/99designs/gqlgen/plugin/federation/fedruntime"
-	database "github.com/VidroX/cutcutfilm-shared/pagination"
+	"github.com/VidroX/cutcutfilm-shared/pagination"
+	"github.com/VidroX/cutcutfilm-shared/permissions"
+	"github.com/VidroX/cutcutfilm-shared/tokens"
 	"github.com/VidroX/cutcutfilm/services/user/graph/model"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -44,11 +47,14 @@ type ResolverRoot interface {
 	Entity() EntityResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
+	User() UserResolver
 }
 
 type DirectiveRoot struct {
 	HasPermission   func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string) (res interface{}, err error)
 	IsAuthenticated func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	NoUser          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RefreshToken    func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -57,8 +63,9 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		Login    func(childComplexity int, credential string, password string) int
-		Register func(childComplexity int, userInfo model.UserRegistrationInput) int
+		Login              func(childComplexity int, credential string, password string) int
+		Register           func(childComplexity int, userInfo model.UserRegistrationInput) int
+		SetUserPermissions func(childComplexity int, userInfo model.SetUserPermissionsInput) int
 	}
 
 	PageInfo struct {
@@ -69,10 +76,15 @@ type ComplexityRoot struct {
 		TotalResults    func(childComplexity int) int
 	}
 
+	Permission struct {
+		Action      func(childComplexity int) int
+		Description func(childComplexity int) int
+	}
+
 	Query struct {
 		RefreshAccessToken func(childComplexity int) int
 		User               func(childComplexity int, userID *string) int
-		Users              func(childComplexity int, pagination *database.Pagination) int
+		Users              func(childComplexity int, pagination *pagination.Pagination) int
 		__resolve__service func(childComplexity int) int
 		__resolve_entities func(childComplexity int, representations []map[string]interface{}) int
 	}
@@ -83,9 +95,11 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		EMail    func(childComplexity int) int
-		ID       func(childComplexity int) int
-		Username func(childComplexity int) int
+		EMail            func(childComplexity int) int
+		ID               func(childComplexity int) int
+		Permissions      func(childComplexity int) int
+		RegistrationDate func(childComplexity int) int
+		Username         func(childComplexity int) int
 	}
 
 	UserWithToken struct {
@@ -110,11 +124,15 @@ type EntityResolver interface {
 type MutationResolver interface {
 	Login(ctx context.Context, credential string, password string) (*model.UserWithToken, error)
 	Register(ctx context.Context, userInfo model.UserRegistrationInput) (*model.UserWithToken, error)
+	SetUserPermissions(ctx context.Context, userInfo model.SetUserPermissionsInput) (*model.User, error)
 }
 type QueryResolver interface {
 	RefreshAccessToken(ctx context.Context) (*model.Token, error)
 	User(ctx context.Context, userID *string) (*model.User, error)
-	Users(ctx context.Context, pagination *database.Pagination) (*model.UsersConnection, error)
+	Users(ctx context.Context, pagination *pagination.Pagination) (*model.UsersConnection, error)
+}
+type UserResolver interface {
+	Permissions(ctx context.Context, obj *model.User) ([]*permissions.Permission, error)
 }
 
 type executableSchema struct {
@@ -172,6 +190,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.Register(childComplexity, args["userInfo"].(model.UserRegistrationInput)), true
 
+	case "Mutation.setUserPermissions":
+		if e.complexity.Mutation.SetUserPermissions == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setUserPermissions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetUserPermissions(childComplexity, args["userInfo"].(model.SetUserPermissionsInput)), true
+
 	case "PageInfo.hasNextPage":
 		if e.complexity.PageInfo.HasNextPage == nil {
 			break
@@ -207,6 +237,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PageInfo.TotalResults(childComplexity), true
 
+	case "Permission.action":
+		if e.complexity.Permission.Action == nil {
+			break
+		}
+
+		return e.complexity.Permission.Action(childComplexity), true
+
+	case "Permission.description":
+		if e.complexity.Permission.Description == nil {
+			break
+		}
+
+		return e.complexity.Permission.Description(childComplexity), true
+
 	case "Query.refreshAccessToken":
 		if e.complexity.Query.RefreshAccessToken == nil {
 			break
@@ -236,7 +280,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Users(childComplexity, args["pagination"].(*database.Pagination)), true
+		return e.complexity.Query.Users(childComplexity, args["pagination"].(*pagination.Pagination)), true
 
 	case "Query._service":
 		if e.complexity.Query.__resolve__service == nil {
@@ -284,6 +328,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.User.ID(childComplexity), true
+
+	case "User.permissions":
+		if e.complexity.User.Permissions == nil {
+			break
+		}
+
+		return e.complexity.User.Permissions(childComplexity), true
+
+	case "User.registrationDate":
+		if e.complexity.User.RegistrationDate == nil {
+			break
+		}
+
+		return e.complexity.User.RegistrationDate(childComplexity), true
 
 	case "User.userName":
 		if e.complexity.User.Username == nil {
@@ -343,6 +401,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputPagination,
+		ec.unmarshalInputSetUserPermissionsInput,
 		ec.unmarshalInputUserRegistrationInput,
 	)
 	first := true
@@ -592,6 +651,21 @@ func (ec *executionContext) field_Mutation_register_args(ctx context.Context, ra
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setUserPermissions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.SetUserPermissionsInput
+	if tmp, ok := rawArgs["userInfo"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userInfo"))
+		arg0, err = ec.unmarshalNSetUserPermissionsInput2githubᚗcomᚋVidroXᚋcutcutfilmᚋservicesᚋuserᚋgraphᚋmodelᚐSetUserPermissionsInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["userInfo"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -640,7 +714,7 @@ func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_users_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *database.Pagination
+	var arg0 *pagination.Pagination
 	if tmp, ok := rawArgs["pagination"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pagination"))
 		arg0, err = ec.unmarshalOPagination2ᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpaginationᚐPagination(ctx, tmp)
@@ -735,6 +809,10 @@ func (ec *executionContext) fieldContext_Entity_findUserByID(ctx context.Context
 				return ec.fieldContext_User_email(ctx, field)
 			case "userName":
 				return ec.fieldContext_User_userName(ctx, field)
+			case "registrationDate":
+				return ec.fieldContext_User_registrationDate(ctx, field)
+			case "permissions":
+				return ec.fieldContext_User_permissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -766,8 +844,28 @@ func (ec *executionContext) _Mutation_login(ctx context.Context, field graphql.C
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().Login(rctx, fc.Args["credential"].(string), fc.Args["password"].(string))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().Login(rctx, fc.Args["credential"].(string), fc.Args["password"].(string))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.NoUser == nil {
+				return nil, errors.New("directive noUser is not implemented")
+			}
+			return ec.directives.NoUser(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.UserWithToken); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/VidroX/cutcutfilm/services/user/graph/model.UserWithToken`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -829,8 +927,28 @@ func (ec *executionContext) _Mutation_register(ctx context.Context, field graphq
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().Register(rctx, fc.Args["userInfo"].(model.UserRegistrationInput))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().Register(rctx, fc.Args["userInfo"].(model.UserRegistrationInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.NoUser == nil {
+				return nil, errors.New("directive noUser is not implemented")
+			}
+			return ec.directives.NoUser(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.UserWithToken); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/VidroX/cutcutfilm/services/user/graph/model.UserWithToken`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -879,7 +997,98 @@ func (ec *executionContext) fieldContext_Mutation_register(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_page(ctx context.Context, field graphql.CollectedField, obj *database.PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_setUserPermissions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_setUserPermissions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().SetUserPermissions(rctx, fc.Args["userInfo"].(model.SetUserPermissionsInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			permission, err := ec.unmarshalNString2string(ctx, "write:admin")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.HasPermission == nil {
+				return nil, errors.New("directive hasPermission is not implemented")
+			}
+			return ec.directives.HasPermission(ctx, nil, directive0, permission)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.User); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/VidroX/cutcutfilm/services/user/graph/model.User`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚋservicesᚋuserᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setUserPermissions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "userName":
+				return ec.fieldContext_User_userName(ctx, field)
+			case "registrationDate":
+				return ec.fieldContext_User_registrationDate(ctx, field)
+			case "permissions":
+				return ec.fieldContext_User_permissions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setUserPermissions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PageInfo_page(ctx context.Context, field graphql.CollectedField, obj *pagination.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_page(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -923,7 +1132,7 @@ func (ec *executionContext) fieldContext_PageInfo_page(ctx context.Context, fiel
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_resultsPerPage(ctx context.Context, field graphql.CollectedField, obj *database.PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_resultsPerPage(ctx context.Context, field graphql.CollectedField, obj *pagination.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_resultsPerPage(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -967,7 +1176,7 @@ func (ec *executionContext) fieldContext_PageInfo_resultsPerPage(ctx context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_totalResults(ctx context.Context, field graphql.CollectedField, obj *database.PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_totalResults(ctx context.Context, field graphql.CollectedField, obj *pagination.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_totalResults(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1011,7 +1220,7 @@ func (ec *executionContext) fieldContext_PageInfo_totalResults(ctx context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *database.PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *pagination.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasNextPage(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1055,7 +1264,7 @@ func (ec *executionContext) fieldContext_PageInfo_hasNextPage(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field graphql.CollectedField, obj *database.PageInfo) (ret graphql.Marshaler) {
+func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field graphql.CollectedField, obj *pagination.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1099,6 +1308,94 @@ func (ec *executionContext) fieldContext_PageInfo_hasPreviousPage(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Permission_action(ctx context.Context, field graphql.CollectedField, obj *permissions.Permission) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Permission_action(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Action, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Permission_action(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Permission",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Permission_description(ctx context.Context, field graphql.CollectedField, obj *permissions.Permission) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Permission_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Permission_description(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Permission",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_refreshAccessToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_refreshAccessToken(ctx, field)
 	if err != nil {
@@ -1112,8 +1409,28 @@ func (ec *executionContext) _Query_refreshAccessToken(ctx context.Context, field
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().RefreshAccessToken(rctx)
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().RefreshAccessToken(rctx)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.RefreshToken == nil {
+				return nil, errors.New("directive refreshToken is not implemented")
+			}
+			return ec.directives.RefreshToken(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.Token); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/VidroX/cutcutfilm/services/user/graph/model.Token`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1214,6 +1531,10 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_email(ctx, field)
 			case "userName":
 				return ec.fieldContext_User_userName(ctx, field)
+			case "registrationDate":
+				return ec.fieldContext_User_registrationDate(ctx, field)
+			case "permissions":
+				return ec.fieldContext_User_permissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -1247,7 +1568,7 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Query().Users(rctx, fc.Args["pagination"].(*database.Pagination))
+			return ec.resolvers.Query().Users(rctx, fc.Args["pagination"].(*pagination.Pagination))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			permission, err := ec.unmarshalNString2string(ctx, "read:admin")
@@ -1575,9 +1896,9 @@ func (ec *executionContext) _Token_type(ctx context.Context, field graphql.Colle
 		}
 		return graphql.Null
 	}
-	res := resTmp.(model.TokenType)
+	res := resTmp.(tokens.TokenType)
 	fc.Result = res
-	return ec.marshalNTokenType2githubᚗcomᚋVidroXᚋcutcutfilmᚋservicesᚋuserᚋgraphᚋmodelᚐTokenType(ctx, field.Selections, res)
+	return ec.marshalNTokenType2githubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋtokensᚐTokenType(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Token_type(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1769,6 +2090,94 @@ func (ec *executionContext) fieldContext_User_userName(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _User_registrationDate(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_registrationDate(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RegistrationDate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_registrationDate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_permissions(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_permissions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.User().Permissions(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*permissions.Permission)
+	fc.Result = res
+	return ec.marshalOPermission2ᚕᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpermissionsᚐPermission(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_permissions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "action":
+				return ec.fieldContext_Permission_action(ctx, field)
+			case "description":
+				return ec.fieldContext_Permission_description(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Permission", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UserWithToken_user(ctx context.Context, field graphql.CollectedField, obj *model.UserWithToken) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserWithToken_user(ctx, field)
 	if err != nil {
@@ -1811,6 +2220,10 @@ func (ec *executionContext) fieldContext_UserWithToken_user(ctx context.Context,
 				return ec.fieldContext_User_email(ctx, field)
 			case "userName":
 				return ec.fieldContext_User_userName(ctx, field)
+			case "registrationDate":
+				return ec.fieldContext_User_registrationDate(ctx, field)
+			case "permissions":
+				return ec.fieldContext_User_permissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -1957,6 +2370,10 @@ func (ec *executionContext) fieldContext_UsersConnection_node(ctx context.Contex
 				return ec.fieldContext_User_email(ctx, field)
 			case "userName":
 				return ec.fieldContext_User_userName(ctx, field)
+			case "registrationDate":
+				return ec.fieldContext_User_registrationDate(ctx, field)
+			case "permissions":
+				return ec.fieldContext_User_permissions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -1990,7 +2407,7 @@ func (ec *executionContext) _UsersConnection_pageInfo(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*database.PageInfo)
+	res := resTmp.(*pagination.PageInfo)
 	fc.Result = res
 	return ec.marshalNPageInfo2ᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpaginationᚐPageInfo(ctx, field.Selections, res)
 }
@@ -3834,8 +4251,8 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputPagination(ctx context.Context, obj interface{}) (database.Pagination, error) {
-	var it database.Pagination
+func (ec *executionContext) unmarshalInputPagination(ctx context.Context, obj interface{}) (pagination.Pagination, error) {
+	var it pagination.Pagination
 	asMap := map[string]interface{}{}
 	for k, v := range obj.(map[string]interface{}) {
 		asMap[k] = v
@@ -3866,6 +4283,44 @@ func (ec *executionContext) unmarshalInputPagination(ctx context.Context, obj in
 				return it, err
 			}
 			it.ResultsPerPage = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSetUserPermissionsInput(ctx context.Context, obj interface{}) (model.SetUserPermissionsInput, error) {
+	var it model.SetUserPermissionsInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"userId", "permissions"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "userId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
+		case "permissions":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permissions"))
+			data, err := ec.unmarshalNString2ᚕᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Permissions = data
 		}
 	}
 
@@ -4040,6 +4495,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "setUserPermissions":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setUserPermissions(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4065,7 +4527,7 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 
 var pageInfoImplementors = []string{"PageInfo"}
 
-func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *database.PageInfo) graphql.Marshaler {
+func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *pagination.PageInfo) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, pageInfoImplementors)
 
 	out := graphql.NewFieldSet(fields)
@@ -4096,6 +4558,50 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "hasPreviousPage":
 			out.Values[i] = ec._PageInfo_hasPreviousPage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var permissionImplementors = []string{"Permission"}
+
+func (ec *executionContext) _Permission(ctx context.Context, sel ast.SelectionSet, obj *permissions.Permission) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, permissionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Permission")
+		case "action":
+			out.Values[i] = ec._Permission_action(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._Permission_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -4340,18 +4846,53 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 		case "id":
 			out.Values[i] = ec._User_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "email":
 			out.Values[i] = ec._User_email(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "userName":
 			out.Values[i] = ec._User_userName(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "registrationDate":
+			out.Values[i] = ec._User_registrationDate(ctx, field, obj)
+		case "permissions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._User_permissions(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -4896,7 +5437,7 @@ func (ec *executionContext) marshalNInt642int64(ctx context.Context, sel ast.Sel
 	return res
 }
 
-func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpaginationᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *database.PageInfo) graphql.Marshaler {
+func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpaginationᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *pagination.PageInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -4904,6 +5445,11 @@ func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋVidroXᚋcutcutfi
 		return graphql.Null
 	}
 	return ec._PageInfo(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSetUserPermissionsInput2githubᚗcomᚋVidroXᚋcutcutfilmᚋservicesᚋuserᚋgraphᚋmodelᚐSetUserPermissionsInput(ctx context.Context, v interface{}) (model.SetUserPermissionsInput, error) {
+	res, err := ec.unmarshalInputSetUserPermissionsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
@@ -4921,6 +5467,32 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
+func (ec *executionContext) unmarshalNString2ᚕᚖstring(ctx context.Context, v interface{}) ([]*string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalOString2ᚖstring(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNString2ᚕᚖstring(ctx context.Context, sel ast.SelectionSet, v []*string) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalOString2ᚖstring(ctx, sel, v[i])
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalNToken2githubᚗcomᚋVidroXᚋcutcutfilmᚋservicesᚋuserᚋgraphᚋmodelᚐToken(ctx context.Context, sel ast.SelectionSet, v model.Token) graphql.Marshaler {
 	return ec._Token(ctx, sel, &v)
 }
@@ -4935,14 +5507,20 @@ func (ec *executionContext) marshalNToken2ᚖgithubᚗcomᚋVidroXᚋcutcutfilm�
 	return ec._Token(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNTokenType2githubᚗcomᚋVidroXᚋcutcutfilmᚋservicesᚋuserᚋgraphᚋmodelᚐTokenType(ctx context.Context, v interface{}) (model.TokenType, error) {
-	var res model.TokenType
-	err := res.UnmarshalGQL(v)
+func (ec *executionContext) unmarshalNTokenType2githubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋtokensᚐTokenType(ctx context.Context, v interface{}) (tokens.TokenType, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := tokens.TokenType(tmp)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNTokenType2githubᚗcomᚋVidroXᚋcutcutfilmᚋservicesᚋuserᚋgraphᚋmodelᚐTokenType(ctx context.Context, sel ast.SelectionSet, v model.TokenType) graphql.Marshaler {
-	return v
+func (ec *executionContext) marshalNTokenType2githubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋtokensᚐTokenType(ctx context.Context, sel ast.SelectionSet, v tokens.TokenType) graphql.Marshaler {
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) marshalNUser2githubᚗcomᚋVidroXᚋcutcutfilmᚋservicesᚋuserᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {
@@ -5499,12 +6077,60 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	return res
 }
 
-func (ec *executionContext) unmarshalOPagination2ᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpaginationᚐPagination(ctx context.Context, v interface{}) (*database.Pagination, error) {
+func (ec *executionContext) unmarshalOPagination2ᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpaginationᚐPagination(ctx context.Context, v interface{}) (*pagination.Pagination, error) {
 	if v == nil {
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputPagination(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOPermission2ᚕᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpermissionsᚐPermission(ctx context.Context, sel ast.SelectionSet, v []*permissions.Permission) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOPermission2ᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpermissionsᚐPermission(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOPermission2ᚖgithubᚗcomᚋVidroXᚋcutcutfilmᚑsharedᚋpermissionsᚐPermission(ctx context.Context, sel ast.SelectionSet, v *permissions.Permission) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Permission(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
@@ -5568,6 +6194,16 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	res := graphql.MarshalString(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
+	res, err := graphql.UnmarshalTime(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	res := graphql.MarshalTime(v)
 	return res
 }
 

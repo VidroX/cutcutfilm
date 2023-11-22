@@ -11,7 +11,7 @@ import (
 	cutcutfilm "github.com/VidroX/cutcutfilm-shared"
 	"github.com/VidroX/cutcutfilm-shared/config"
 	"github.com/VidroX/cutcutfilm-shared/directives"
-	"github.com/VidroX/cutcutfilm-shared/jwx"
+	"github.com/VidroX/cutcutfilm-shared/middleware"
 	"github.com/VidroX/cutcutfilm-shared/translator"
 	"github.com/VidroX/cutcutfilm/services/user/core/database"
 	"github.com/VidroX/cutcutfilm/services/user/core/environment"
@@ -20,6 +20,8 @@ import (
 	"github.com/VidroX/cutcutfilm/services/user/core/services"
 	"github.com/VidroX/cutcutfilm/services/user/graph"
 	resolvers "github.com/VidroX/cutcutfilm/services/user/graph/resolvers"
+	"github.com/VidroX/cutcutfilm/services/user/proto/identity/v1/identityv1connect"
+	"github.com/go-playground/validator/v10"
 )
 
 const defaultPort = "4001"
@@ -27,6 +29,8 @@ const defaultPort = "4001"
 var directivesList = graph.DirectiveRoot{
 	IsAuthenticated: directives.IsAuthenticatedDirective,
 	HasPermission:   directives.HasPermissionDirective,
+	RefreshToken:    directives.RefreshTokenOnlyDirective,
+	NoUser:          directives.NoAuthDirective,
 }
 
 func initDatabase() *database.NebulaDb {
@@ -67,12 +71,19 @@ func main() {
 		Database: db,
 	})
 
+	identityClient := identityv1connect.NewIdentityServiceClient(
+		http.DefaultClient,
+		os.Getenv(environment.KeysIdentityServiceLocation),
+	)
+
 	srv := handler.NewDefaultServer(
 		graph.NewExecutableSchema(
 			graph.Config{
 				Resolvers: &resolvers.Resolver{
 					Services: services.Init(&services.ServiceDependencies{
-						Repositories: repos,
+						Repositories:          repos,
+						IdentityServiceClient: &identityClient,
+						Validator:             validator.New(),
 					}),
 				},
 				Directives: directivesList,
@@ -84,7 +95,7 @@ func main() {
 		http.Handle("/", playground.Handler("GraphQL Playground", "/gql"))
 	}
 
-	http.Handle("/gql", localizerMiddleware(authMiddleware(srv)))
+	http.Handle("/gql", localizerMiddleware(middleware.AuthMiddleware(srv)))
 
 	if debug {
 		log.Printf("Server ready at http://localhost:%s/gql. GraphQL Playground available at http://localhost:%s", port, port)
@@ -121,23 +132,5 @@ func localizerMiddleware(next http.Handler) http.Handler {
 		ctx = context.WithValue(ctx, translator.Key, &nebulaLocalizer)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
-	})
-}
-
-func authMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("authorization")
-		user := jwx.ValidateIdentityToken(token)
-
-		if user != nil {
-			ctx := r.Context()
-			ctx = context.WithValue(ctx, "user", user)
-
-			next.ServeHTTP(w, r.WithContext(ctx))
-
-			return
-		}
-
-		next.ServeHTTP(w, r)
 	})
 }

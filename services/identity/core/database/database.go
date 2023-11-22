@@ -31,6 +31,8 @@ func (db *NebulaDb) AutoMigrateAll() {
 }
 
 func (db *NebulaDb) PopulatePermissions() {
+	isAddedAny := false
+
 	for _, permission := range permissions.AllPermissions {
 		dbPermission := models.Permission{}
 		db.First(&dbPermission, "action = ?", permission.Action)
@@ -48,9 +50,13 @@ func (db *NebulaDb) PopulatePermissions() {
 			log.Fatalf("Unable to populate permission. Error: %v", err)
 			return
 		}
+
+		isAddedAny = true
 	}
 
-	log.Println("Successfully populated permissions!")
+	if isAddedAny {
+		log.Println("Successfully populated permissions!")
+	}
 }
 
 func (db *NebulaDb) SetAdminPermissions() {

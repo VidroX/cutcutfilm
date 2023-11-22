@@ -1,8 +1,8 @@
 FROM golang:1.21.4-alpine
 
 ENV APP_NAME cutcutfilm
-ENV APP_SERVICE_NAME cutcutfilm-user
-ENV APP_HOME /app/${APP_NAME}/services/user
+ENV APP_SERVICE_NAME cutcutfilm-identity
+ENV APP_HOME /app/${APP_NAME}/services/identity
 WORKDIR "$APP_HOME"
 
 RUN apk add --no-cache git

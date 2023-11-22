@@ -20,7 +20,10 @@ spec:
             - name: PORT
               value: "{{ .Values.services.gateway.containerPort }}"
             - name: DEBUG
-              value: "{{ .Values.debug }}"
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.gateway.name }}-config
+                  key: debug
             - name: NODE_ENV
               value: "production"
             - name: ENVIRONMENT_TYPE

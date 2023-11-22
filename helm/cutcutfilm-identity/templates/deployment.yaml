@@ -20,7 +20,10 @@ spec:
             - name: PORT
               value: "{{ .Values.services.identity.containerPort }}"
             - name: DEBUG
-              value: "{{ .Values.debug }}"
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.identity.name }}-config
+                  key: debug
             - name: DATABASE_URI
               valueFrom:
                 configMapKeyRef:

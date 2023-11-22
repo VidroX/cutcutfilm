@@ -20,7 +20,10 @@ spec:
             - name: PORT
               value: "{{ .Values.services.user.containerPort }}"
             - name: DEBUG
-              value: "{{ .Values.debug }}"
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.user.name }}-config
+                  key: debug
             - name: DATABASE_URI
               valueFrom:
                 configMapKeyRef:

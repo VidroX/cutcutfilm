@@ -18,6 +18,7 @@ ENV CGO_ENABLED=0
 
 COPY . .
 
+RUN rm -f go.sum
 RUN go mod tidy
 RUN go build -v -o "$APP_SERVICE_NAME"
 

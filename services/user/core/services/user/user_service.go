@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/http"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"connectrpc.com/connect"
 	"github.com/VidroX/cutcutfilm-shared/contextuser"
@@ -167,6 +170,8 @@ func (service *userService) Login(ctx context.Context, credential string, passwo
 		return nil, []*nebulaErrors.APIError{err2}
 	}
 
+	setTokenCookies(ctx, (*userTokens).Access, (*userTokens).Refresh, true)
+
 	return &model.UserWithToken{
 		User: dbUser,
 		AccessToken: &model.Token{
@@ -220,6 +225,8 @@ func (service *userService) Register(ctx context.Context, userInfo model.UserReg
 		return nil, []*nebulaErrors.APIError{err2}
 	}
 
+	setTokenCookies(ctx, (*userTokens).Access, (*userTokens).Refresh, true)
+
 	return &model.UserWithToken{
 		User: &dbUser,
 		AccessToken: &model.Token{
@@ -259,6 +266,8 @@ func (service *userService) RefreshAccessToken(ctx context.Context) (*model.Toke
 		return nil, &general.ErrInternal
 	}
 
+	setTokenCookies(ctx, resp.Msg.GetToken(), "", false)
+
 	return &model.Token{
 		Type:  tokens.TokenTypeRefresh,
 		Token: resp.Msg.GetToken(),
@@ -289,6 +298,12 @@ func (service *userService) SetUserPermissions(ctx context.Context, userInfo mod
 		return nil, &general.ErrNotEnoughPermissions
 	}
 
+	user, err2 := service.GetUser(userInfo.UserID)
+
+	if err2 != nil {
+		return nil, err2
+	}
+
 	req := connect.NewRequest(&identityv1.SetUserPermissionsRequest{
 		UserId:      userInfo.UserID,
 		Permissions: normalizedPermissions,
@@ -311,10 +326,10 @@ func (service *userService) SetUserPermissions(ctx context.Context, userInfo mod
 		return nil, &general.ErrInternal
 	}
 
-	user, err2 := service.GetUser(userInfo.UserID)
+	user, err2 = service.GetUser(userInfo.UserID)
 
 	if err2 != nil {
-		return nil, &general.ErrInternal
+		return nil, err2
 	}
 
 	return user, nil
@@ -346,6 +361,53 @@ func getUserTokens(client *identityv1connect.IdentityServiceClient, ctx context.
 		Access:  resp.Msg.GetAccessToken(),
 		Refresh: resp.Msg.GetRefreshToken(),
 	}, nil
+}
+
+func getResponseWriter(ctx context.Context) http.ResponseWriter {
+	writerValue := ctx.Value("responseWriter")
+	writer, ok := writerValue.(http.ResponseWriter)
+
+	if !ok || writer == nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Could not retrieve response writer")
+		}
+
+		return nil
+	}
+
+	return writer
+}
+
+func setTokenCookies(ctx context.Context, accessToken string, refreshToken string, shouldSetRefreshToken bool) {
+	writer := getResponseWriter(ctx)
+
+	if writer == nil {
+		return
+	}
+
+	accessTokenClaims, tokenErr := jwt.ParseString(accessToken, jwt.WithVerify(false))
+
+	if tokenErr == nil && accessTokenClaims != nil {
+		http.SetCookie(writer, &http.Cookie{
+			HttpOnly: true,
+			Expires:  accessTokenClaims.Expiration(),
+			Secure:   true,
+			Name:     "at",
+			Value:    accessToken,
+		})
+	}
+
+	refreshTokenClaims, tokenErr2 := jwt.ParseString(refreshToken, jwt.WithVerify(false))
+
+	if shouldSetRefreshToken && tokenErr2 == nil && refreshTokenClaims != nil {
+		http.SetCookie(writer, &http.Cookie{
+			HttpOnly: true,
+			Expires:  refreshTokenClaims.Expiration(),
+			Secure:   true,
+			Name:     "rt",
+			Value:    refreshToken,
+		})
+	}
 }
 
 func RegisterUserService(

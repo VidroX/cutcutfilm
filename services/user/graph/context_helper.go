@@ -15,7 +15,7 @@ func GetLocalizer(ctx context.Context) *translator.NebulaLocalizer {
 
 	if contextTranslator == nil {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
-			log.Panic("Could not retrieve translator")
+			log.Println("Could not retrieve translator")
 		}
 
 		return nil

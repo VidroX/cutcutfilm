@@ -5,7 +5,7 @@ go 1.20
 require (
 	connectrpc.com/connect v1.12.0
 	connectrpc.com/grpcreflect v1.2.0
-	github.com/VidroX/cutcutfilm-shared v0.0.0-20231122073708-dc2684152acc
+	github.com/VidroX/cutcutfilm-shared v0.0.0-20231126084750-be9aa9d09f5d
 	github.com/emirpasic/gods v1.18.1
 	github.com/google/uuid v1.3.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa

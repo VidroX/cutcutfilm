@@ -7,8 +7,8 @@ github.com/99designs/gqlgen v0.17.37/go.mod h1:eov4+h4V+M6snvxWsGsUZskjv9r0vuIrS
 github.com/BurntSushi/toml v1.0.0/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/BurntSushi/toml v1.2.1 h1:9F2/+DoOYIOksmaJFPw1tGFy1eDnIJXg+UHjuD8lTak=
 github.com/BurntSushi/toml v1.2.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
-github.com/VidroX/cutcutfilm-shared v0.0.0-20231122073708-dc2684152acc h1:3l8zcpLLkVrWYy3lMxI7b64ZNWjB30ktnVqcZSRhrsI=
-github.com/VidroX/cutcutfilm-shared v0.0.0-20231122073708-dc2684152acc/go.mod h1:oaqkQQobSZxc6GW8yDXoNB74StCNsBgHYwuaOLr5ovI=
+github.com/VidroX/cutcutfilm-shared v0.0.0-20231126084750-be9aa9d09f5d h1:lVbNU8p4BlaUBFuxwQa3oQW+RMRMRuhy0QJmpVkrTRw=
+github.com/VidroX/cutcutfilm-shared v0.0.0-20231126084750-be9aa9d09f5d/go.mod h1:oaqkQQobSZxc6GW8yDXoNB74StCNsBgHYwuaOLr5ovI=
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883 h1:bvNMNQO63//z+xNgfBlViaCIJKLlCJ6/fmUseuG0wVQ=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

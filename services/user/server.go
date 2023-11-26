@@ -100,7 +100,7 @@ func main() {
 		http.Handle("/", playground.Handler("GraphQL Playground", "/gql"))
 	}
 
-	http.Handle("/gql", localizerMiddleware(middleware.AuthMiddleware(srv)))
+	http.Handle("/gql", localizerMiddleware(middleware.AuthMiddleware(writerMiddleware(srv))))
 
 	if debug {
 		log.Printf("Server ready at http://localhost:%s/gql. GraphQL Playground available at http://localhost:%s", port, port)
@@ -109,6 +109,15 @@ func main() {
 	}
 
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func writerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "responseWriter", w)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 func localizerMiddleware(next http.Handler) http.Handler {

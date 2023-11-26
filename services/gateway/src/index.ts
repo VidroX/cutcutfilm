@@ -26,6 +26,10 @@ import {
 import { createPromiseClient } from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-node';
 import { IdentityService } from './proto/identity/v1/identity_connect.js';
+import CookiePassthroughPlugin, {
+	parseServiceCookieString,
+} from './plugins/cookie-passthrough-plugin.js';
+import cookie from 'cookie';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -46,11 +50,7 @@ try {
 		{ headers: { 'x-api-key': IDENTITY_SERVICE_API_KEY } }
 	);
 
-	const parsedKeySet = JSON.parse(
-		Buffer.from(identityKeySet.encodedKeys, 'base64').toString('utf8')
-	);
-
-	keySet = parsedKeySet;
+	keySet = JSON.parse(Buffer.from(identityKeySet.encodedKeys, 'base64').toString('utf8'));
 } catch (err: any) {
 	if (DEBUG) {
 		console.log('Unable to get keyset from Identity Service:', err);
@@ -69,6 +69,15 @@ const gateway = new ApolloGateway({
 	buildService({ url }) {
 		return new RemoteGraphQLDataSource({
 			url,
+			didReceiveResponse({ response, context }) {
+				const cookies = response.http?.headers?.get('set-cookie') as string | null;
+
+				if (cookies != null) {
+					context['cookies'] = parseServiceCookieString(cookies);
+				}
+
+				return response;
+			},
 			willSendRequest({ request, context }) {
 				if (context.acceptLanguage != null) {
 					request.http?.headers.set('Accept-Language', context.acceptLanguage);
@@ -103,6 +112,7 @@ const server = new ApolloServer({
 		...debugPlugins,
 		responseCachePlugin(),
 		ApolloServerPluginDrainHttpServer({ httpServer }),
+		CookiePassthroughPlugin(),
 	],
 });
 
@@ -135,31 +145,57 @@ app.use(
 	bodyParser.json({ limit: '10mb' }),
 	expressMiddleware(server, {
 		context: async ({ req }) => {
-			const token = (req.headers.authorization ?? '').trim().replace('Bearer ', '');
+			const cookies = cookie.parse(req.headers.cookie ?? '');
 
-			if (token.trim().length < 1) {
-				return { acceptLanguage: req.headers['accept-language'] ?? 'en' };
+			const headerToken = (req.headers?.authorization ?? '').trim().replace('Bearer ', '');
+			const accessToken = cookies?.at?.trim() ?? '';
+			const refreshToken = cookies?.rt?.trim() ?? '';
+
+			const acceptLanguage = req.headers['accept-language'] ?? 'en';
+
+			if (headerToken.length < 1 && accessToken.length < 1 && refreshToken.length < 1) {
+				return { acceptLanguage };
 			}
 
-			try {
-				const headers = new Headers();
-				headers.set('accept-language', req.headers['accept-language'] ?? 'en');
-				headers.set('x-api-key', IDENTITY_SERVICE_API_KEY);
-				headers.set('authorization', token);
+			if (headerToken.length > 0) {
+				const headerTokenResponse = await getIdentityToken(headerToken, acceptLanguage);
 
-				const resp = await identityServiceClient.issueServiceToken({}, { headers });
-
-				return { token: resp.token, acceptLanguage: req.headers['accept-language'] ?? 'en' };
-			} catch (err: any) {
-				if (err?.code !== 2 && DEBUG) {
-					console.log('Unable to verify and issue servicing user token:', err);
+				if (headerTokenResponse != null) {
+					return { token: headerTokenResponse, acceptLanguage };
 				}
-
-				return { acceptLanguage: req.headers['accept-language'] ?? 'en' };
 			}
+
+			if (accessToken.length > 0) {
+				const accessTokenResponse = await getIdentityToken(accessToken, acceptLanguage);
+
+				if (accessTokenResponse != null) {
+					return { token: accessTokenResponse, acceptLanguage };
+				}
+			}
+
+			const refreshTokenResponse = await getIdentityToken(refreshToken, acceptLanguage);
+
+			return { token: refreshTokenResponse, acceptLanguage };
 		},
 	})
 );
+
+const getIdentityToken = async (token: string, acceptLanguage: string): Promise<string | null> => {
+	try {
+		const headers = new Headers();
+		headers.set('accept-language', acceptLanguage);
+		headers.set('x-api-key', IDENTITY_SERVICE_API_KEY);
+		headers.set('authorization', token);
+
+		return (await identityServiceClient.issueServiceToken({}, { headers })).token;
+	} catch (err: any) {
+		if (err?.code !== 2 && DEBUG) {
+			console.log('Unable to verify and issue servicing user token:', err);
+		}
+
+		return null;
+	}
+};
 
 await new Promise<void>((resolve) => httpServer.listen({ port: PORT }, resolve));
 

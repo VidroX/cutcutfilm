@@ -5,13 +5,14 @@ go 1.20
 require (
 	connectrpc.com/connect v1.12.0
 	github.com/99designs/gqlgen v0.17.40
-	github.com/VidroX/cutcutfilm-shared v0.0.0-20231122073708-dc2684152acc
+	github.com/VidroX/cutcutfilm-shared v0.0.0-20231126084750-be9aa9d09f5d
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/joho/godotenv v1.5.1
+	github.com/lestrrat-go/jwx/v2 v2.0.16
 	github.com/vektah/gqlparser/v2 v2.5.10
 	google.golang.org/protobuf v1.31.0
 	gorm.io/driver/postgres v1.5.4
@@ -37,7 +38,6 @@ require (
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc v1.0.4 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
-	github.com/lestrrat-go/jwx/v2 v2.0.16 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.2.2 // indirect

@@ -120,6 +120,7 @@ await server.start();
 
 const allowedOrigins = [
 	`http://localhost:${PORT}`,
+	`http://localhost:3000`,
 	'http://localhost',
 	'https://ccf-dev.vidrox.me',
 	'https://cutcutfilm.com',

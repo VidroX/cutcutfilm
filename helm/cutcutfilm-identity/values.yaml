@@ -20,6 +20,8 @@ services:
     image: ""
     containerPort: 4002
     jwtIssuer: "https://cutcutfilm.com/identity-service"
+    accessTokenTTL: 15 # In minutes
+    refreshTokenTTL: 10080 # In minutes
   identityDatabase:
     name: "identity-db-postgresql"
     databaseName: "cutcutfilm-identity"

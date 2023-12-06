@@ -30,6 +30,7 @@ import CookiePassthroughPlugin, {
 	parseServiceCookieString,
 } from './plugins/cookie-passthrough-plugin.js';
 import cookie from 'cookie';
+import { rateLimit } from 'express-rate-limit';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -125,6 +126,15 @@ const allowedOrigins = [
 	'https://ccf-dev.vidrox.me',
 	'https://cutcutfilm.com',
 ];
+
+const limiter = rateLimit({
+	windowMs: 15 * 60 * 1000,
+	limit: 100,
+	standardHeaders: true,
+	legacyHeaders: false,
+});
+
+app.use(limiter);
 
 app.use(
 	'/gql',

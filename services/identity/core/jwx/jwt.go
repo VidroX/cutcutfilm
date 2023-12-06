@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,9 +43,23 @@ func CreateToken(params *TokenParams) string {
 	if params.ExpiryTime != nil {
 		builder = builder.Expiration(issueTime.Add(params.ExpiryTime.Duration))
 	} else if params.TokenType == tokens.TokenTypeRefresh {
-		builder = builder.Expiration(issueTime.Add(time.Hour * 24 * 7))
+		refreshTokenExpirationString := os.Getenv(environment.KeysRefreshTokenTTL)
+		refreshTokenExpiration, err := strconv.Atoi(refreshTokenExpirationString)
+
+		if err != nil {
+			refreshTokenExpiration = 60 * 24 * 7
+		}
+
+		builder = builder.Expiration(issueTime.Add(time.Minute * time.Duration(refreshTokenExpiration)))
 	} else if params.TokenType == tokens.TokenTypeAccess {
-		builder = builder.Expiration(issueTime.Add(time.Minute * 15))
+		accessTokenExpirationString := os.Getenv(environment.KeysAccessTokenTTL)
+		accessTokenExpiration, err := strconv.Atoi(accessTokenExpirationString)
+
+		if err != nil {
+			accessTokenExpiration = 15
+		}
+
+		builder = builder.Expiration(issueTime.Add(time.Minute * time.Duration(accessTokenExpiration)))
 	}
 
 	if params.TokenType == tokens.TokenTypeRefresh || params.TokenType == tokens.TokenTypeAccess {

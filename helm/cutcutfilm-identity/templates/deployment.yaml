@@ -24,6 +24,16 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.services.identity.name }}-config
                   key: debug
+            - name: ACCESS_TOKEN_TTL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.identity.name }}-config
+                  key: access_token_ttl
+            - name: REFRESH_TOKEN_TTL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.identity.name }}-config
+                  key: refresh_token_ttl
             - name: DATABASE_URI
               valueFrom:
                 configMapKeyRef:

@@ -152,6 +152,7 @@ app.use(
 
 			return callback(null, true);
 		},
+		credentials: true,
 	}),
 	bodyParser.json({ limit: '10mb' }),
 	expressMiddleware(server, {

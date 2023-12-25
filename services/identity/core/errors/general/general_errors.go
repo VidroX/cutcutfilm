@@ -14,4 +14,5 @@ var (
 	ErrNotEnoughPermissions  = nebulaErrors.APIError{Code: mainErrorCode + "2", Error: errors.New(resources.KeysNotEnoughPermissions)}
 	ErrInvalidOrExpiredToken = nebulaErrors.APIError{Code: mainErrorCode + "3", Error: errors.New(resources.KeysInvalidOrExpiredTokenError)}
 	ErrUserRequired          = nebulaErrors.APIError{Code: mainErrorCode + "4", Error: errors.New(resources.KeysUserRequiredError)}
+	ErrNotFound              = nebulaErrors.APIError{Code: mainErrorCode + "5", Error: errors.New(resources.KeysNotFoundError)}
 )

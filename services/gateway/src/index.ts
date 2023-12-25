@@ -87,6 +87,10 @@ const gateway = new ApolloGateway({
 				if (context?.token != null) {
 					request.http?.headers.set('Authorization', context.token);
 				}
+
+				if (context?.originalToken != null) {
+					request.http?.headers.set('Original-Authorization', context.originalToken);
+				}
 			},
 		});
 	},
@@ -165,15 +169,18 @@ app.use(
 
 			const acceptLanguage = req.headers['accept-language'] ?? 'en';
 
+			const originalToken =
+				cookies?.rt?.trim() ?? req.headers?.authorization?.trim().replace('Bearer ', '');
+
 			if (headerToken.length < 1 && accessToken.length < 1 && refreshToken.length < 1) {
-				return { acceptLanguage };
+				return { acceptLanguage, originalToken };
 			}
 
 			if (headerToken.length > 0) {
 				const headerTokenResponse = await getIdentityToken(headerToken, acceptLanguage);
 
 				if (headerTokenResponse != null) {
-					return { token: headerTokenResponse, acceptLanguage };
+					return { token: headerTokenResponse, acceptLanguage, originalToken };
 				}
 			}
 
@@ -181,13 +188,13 @@ app.use(
 				const accessTokenResponse = await getIdentityToken(accessToken, acceptLanguage);
 
 				if (accessTokenResponse != null) {
-					return { token: accessTokenResponse, acceptLanguage };
+					return { token: accessTokenResponse, acceptLanguage, originalToken };
 				}
 			}
 
 			const refreshTokenResponse = await getIdentityToken(refreshToken, acceptLanguage);
 
-			return { token: refreshTokenResponse, acceptLanguage };
+			return { token: refreshTokenResponse, acceptLanguage, originalToken };
 		},
 	})
 );

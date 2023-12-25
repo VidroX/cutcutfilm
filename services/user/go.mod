@@ -3,9 +3,9 @@ module github.com/VidroX/cutcutfilm/services/user
 go 1.20
 
 require (
-	connectrpc.com/connect v1.12.0
+	connectrpc.com/connect v1.14.0
 	github.com/99designs/gqlgen v0.17.40
-	github.com/VidroX/cutcutfilm-shared v0.0.0-20231126084750-be9aa9d09f5d
+	github.com/VidroX/cutcutfilm-shared v0.0.0-20231225065128-1aa37d8566a8
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/go-playground/validator/v10 v10.16.0
 	github.com/google/uuid v1.3.0
@@ -14,7 +14,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lestrrat-go/jwx/v2 v2.0.16
 	github.com/vektah/gqlparser/v2 v2.5.10
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.25.5
 )
@@ -41,6 +41,7 @@ require (
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.2.2 // indirect
+	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/sosodev/duration v1.1.0 // indirect
@@ -48,7 +49,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/net v0.10.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/tools v0.9.3 // indirect

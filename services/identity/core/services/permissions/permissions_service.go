@@ -30,7 +30,10 @@ func (service *permissionsService) GetUserPermissions(userId string) ([]permissi
 
 	permissionsList, err := service.permissionsRepository.GetUserPermissions(userId)
 
-	if err != nil {
+	var pgErr *pgconn.PgError
+	if err != nil && (errors.Is(err, gorm.ErrRecordNotFound) || (errors.As(err, &pgErr) && pgErr.Code == pgerrcode.NoDataFound)) {
+		return nil, &generalErrors.ErrNotFound
+	} else if err != nil {
 		return nil, &generalErrors.ErrInternal
 	}
 

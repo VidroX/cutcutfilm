@@ -23,6 +23,7 @@ func (db *NebulaDb) AutoMigrateAll() {
 	err := db.AutoMigrate(
 		&models.Permission{},
 		&models.UserPermission{},
+		&models.RevokedToken{},
 	)
 
 	if err != nil {

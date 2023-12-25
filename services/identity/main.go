@@ -10,11 +10,13 @@ import (
 	"strings"
 
 	"connectrpc.com/grpcreflect"
+	"github.com/VidroX/cutcutfilm-shared/contextuser"
 	"github.com/VidroX/cutcutfilm-shared/tokens"
 	"github.com/VidroX/cutcutfilm-shared/utils"
 
 	"connectrpc.com/connect"
 	"github.com/VidroX/cutcutfilm/services/identity/core/database"
+	"github.com/VidroX/cutcutfilm/services/identity/core/database/models"
 	"github.com/VidroX/cutcutfilm/services/identity/core/repositories"
 	"github.com/VidroX/cutcutfilm/services/identity/core/services"
 	"github.com/google/uuid"
@@ -81,13 +83,14 @@ func initServer(debug bool, db *database.NebulaDb) {
 	address := fmt.Sprintf(":%s", port)
 
 	repos := repositories.Init(&repositories.RepositoryDependencies{Database: db})
+	serverInit := &server{
+		repositories: repos,
+		services:     services.Init(&services.ServiceDependencies{Repositories: repos}),
+	}
 	path, handler := identityv1connect.NewIdentityServiceHandler(
-		&server{
-			repositories: repos,
-			services:     services.Init(&services.ServiceDependencies{Repositories: repos}),
-		},
+		serverInit,
 		connect.WithInterceptors(
-			connect.UnaryInterceptorFunc(serverInterceptor),
+			connect.UnaryInterceptorFunc(serverInit.serverInterceptor),
 		),
 	)
 
@@ -109,15 +112,19 @@ func initServer(debug bool, db *database.NebulaDb) {
 	}
 }
 
-func serverInterceptor(next connect.UnaryFunc) connect.UnaryFunc {
+func (core *server) serverInterceptor(next connect.UnaryFunc) connect.UnaryFunc {
 	return func(ctx context.Context, request connect.AnyRequest) (connect.AnyResponse, error) {
+		if core == nil {
+			return nil, fmt.Errorf("Cannot retrieve core instance")
+		}
+
 		ctx, err := environmentInterceptor(ctx, request.Header())
 
 		if err != nil {
 			return nil, err
 		}
 
-		ctx, err = authInterceptor(ctx, request.Header())
+		ctx, err = authInterceptor(ctx, core, request.Header())
 
 		if err != nil {
 			return nil, err
@@ -146,7 +153,7 @@ func environmentInterceptor(ctx context.Context, headers http.Header) (context.C
 	return ctx, nil
 }
 
-func authInterceptor(ctx context.Context, headers http.Header) (context.Context, error) {
+func authInterceptor(ctx context.Context, core *server, headers http.Header) (context.Context, error) {
 	localizer, ok := ctx.Value(translator.Key).(*translator.NebulaLocalizer)
 	if !ok {
 		return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -171,13 +178,7 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 			log.Println("Provided auth token is empty")
 		}
 
-		ctx = context.WithValue(ctx, "authorized", false)
-
 		return ctx, nil
-	}
-
-	if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
-		log.Printf("Authorizing user with the token %s\n", authToken)
 	}
 
 	searchRegex := regexp.MustCompile("(?i)" + "Bearer")
@@ -198,8 +199,24 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 		)
 	}
 
+	isRevoked := core.services.TokensService.IsTokenRevoked(token)
+
+	if isRevoked {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Provided token is revoked")
+		}
+
+		return nil, status.Errorf(
+			codes.Unauthenticated,
+			translator.
+				WithKey(resources.KeysInvalidOrExpiredTokenError).
+				Translate(localizer),
+		)
+	}
+
+	var userId string
 	if *tokenType != tokens.TokenTypeApplicationRequest {
-		userId, exists := validatedToken.Get("sub")
+		sub, exists := validatedToken.Get("sub")
 
 		if !exists {
 			if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
@@ -214,7 +231,7 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 			)
 		}
 
-		_, err := uuid.Parse(userId.(string))
+		_, err := uuid.Parse(sub.(string))
 
 		if err != nil {
 			return nil, status.Errorf(
@@ -225,7 +242,13 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 			)
 		}
 
-		ctx = context.WithValue(ctx, "user_id", userId.(string))
+		userId = sub.(string)
+
+		ctx = context.WithValue(ctx, "user", models.User{
+			ContextUser: contextuser.ContextUser{
+				UserID: userId,
+			},
+		})
 	}
 
 	issuer, exists := validatedToken.Get("iss")
@@ -248,10 +271,14 @@ func authInterceptor(ctx context.Context, headers http.Header) (context.Context,
 		permissionsString = ""
 	}
 
-	ctx = context.WithValue(ctx, "authorized", true)
-	ctx = context.WithValue(ctx, "user_token_type", tokenType)
-	ctx = context.WithValue(ctx, "user_token_issuer", issuer.(string))
-	ctx = context.WithValue(ctx, "user_permissions", permissions.ParsePermissionsString(permissionsString.(string)))
+	ctx = context.WithValue(ctx, "user", models.User{
+		ContextUser: contextuser.ContextUser{
+			UserID:      userId,
+			TokenType:   *tokenType,
+			Permissions: permissions.ParsePermissionsString(permissionsString.(string)),
+		},
+		TokenIssuer: issuer.(string),
+	})
 
 	return ctx, nil
 }

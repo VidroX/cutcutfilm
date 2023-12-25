@@ -43,6 +43,10 @@ func (repo *PermissionsRepositoryGorm) GetUserPermissions(id string) ([]permissi
 func (repo *PermissionsRepositoryGorm) SetUserPermissions(id string, permissionSlice []permissions.Permission) error {
 	userPermissions, err := repo.GetUserPermissions(id)
 
+	if len(permissionSlice) < 1 {
+		permissionSlice = []permissions.Permission{*permissions.GetPermission(permissions.UserReadSelfPermissionAction)}
+	}
+
 	permissionsToDelete := getPermissionActionsToDelete(userPermissions, permissionSlice)
 	permissionsToAdd := getDatabasePermissionDifference(id, permissionSlice, userPermissions)
 

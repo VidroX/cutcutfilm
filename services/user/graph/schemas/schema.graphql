@@ -2,9 +2,10 @@ extend schema
   @link(url: "https://specs.apollo.dev/federation/v2.3", import: ["@key"])
 
 directive @isAuthenticated on FIELD_DEFINITION
-directive @hasPermission(permission: String!) on FIELD_DEFINITION|INPUT_FIELD_DEFINITION|ARGUMENT_DEFINITION
+directive @hasPermission(permission: String!, fallback: String) on FIELD_DEFINITION|INPUT_FIELD_DEFINITION|ARGUMENT_DEFINITION
+directive @hasPermissions(permissions: [String!]!, requireAll: Boolean!, fallback: String) on FIELD_DEFINITION|INPUT_FIELD_DEFINITION|ARGUMENT_DEFINITION
 directive @noUser on FIELD_DEFINITION
-directive @refreshToken on FIELD_DEFINITION
+directive @refreshToken(allowExternal: Boolean!) on FIELD_DEFINITION
 
 """
 Time scalar
@@ -105,12 +106,12 @@ type Query {
   """
   Refresh access token though refresh token provided inside Authorization header
   """
-  refreshAccessToken: Token! @refreshToken
+  refreshAccessToken: Token! @refreshToken(allowExternal: false)
 
   """
   Get currently user info
   """
-  user(userId: String): User! @isAuthenticated
+  user(userId: String): User! @hasPermission(permission: "read:self", fallback: "read:admin")
 
   """
   Get the list of all users. Admin user is required.
@@ -133,4 +134,9 @@ type Mutation {
   Set user permissions. Users with write:admin permission only.
   """
   setUserPermissions(userInfo: SetUserPermissionsInput!): User! @hasPermission(permission: "write:admin")
+
+  """
+  Logout user. Refresh token is required.
+  """
+  logout: Boolean! @refreshToken(allowExternal: true)
 }

@@ -43,6 +43,7 @@ type UserService interface {
 	Register(ctx context.Context, userInfo model.UserRegistrationInput) (*model.UserWithToken, []*nebulaErrors.APIError)
 	RefreshAccessToken(ctx context.Context) (*model.Token, *nebulaErrors.APIError)
 	SetUserPermissions(ctx context.Context, userInfo model.SetUserPermissionsInput) (*model.User, *nebulaErrors.APIError)
+	Logout(ctx context.Context) (bool, *nebulaErrors.APIError)
 }
 
 type userService struct {
@@ -335,6 +336,45 @@ func (service *userService) SetUserPermissions(ctx context.Context, userInfo mod
 	return user, nil
 }
 
+func (service *userService) Logout(ctx context.Context) (bool, *nebulaErrors.APIError) {
+	currentUser := contextuser.GetCurrentUserFromContext(ctx)
+	originalTokenUser := contextuser.GetUserFromExternalToken(ctx)
+
+	if currentUser == nil {
+		return false, &general.ErrNotEnoughPermissions
+	}
+
+	tokenToRevoke := currentUser.SuppliedToken
+	if originalTokenUser != nil && !utils.UtilString(originalTokenUser.SuppliedToken).IsEmpty() {
+		tokenToRevoke = originalTokenUser.SuppliedToken
+	}
+
+	req := connect.NewRequest(&identityv1.RevokeTokenRequest{
+		Token: tokenToRevoke,
+	})
+
+	req.Header().Add("X-Api-Key", os.Getenv(environment.KeysIdentityServiceApiKey))
+	req.Header().Add("Authorization", currentUser.SuppliedToken)
+
+	if service.identityServiceClient == nil {
+		return false, &general.ErrInternal
+	}
+
+	_, err := (*service.identityServiceClient).RevokeToken(ctx, req)
+
+	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println(err)
+		}
+
+		return false, &general.ErrInternal
+	}
+
+	clearTokenCookies(ctx)
+
+	return true, nil
+}
+
 func getUserTokens(client *identityv1connect.IdentityServiceClient, ctx context.Context, userId string) (*model.TokenCollection, *nebulaErrors.APIError) {
 	if client == nil {
 		return nil, &general.ErrInternal
@@ -408,6 +448,30 @@ func setTokenCookies(ctx context.Context, accessToken string, refreshToken strin
 			Value:    refreshToken,
 		})
 	}
+}
+
+func clearTokenCookies(ctx context.Context) {
+	writer := getResponseWriter(ctx)
+
+	if writer == nil {
+		return
+	}
+
+	http.SetCookie(writer, &http.Cookie{
+		HttpOnly: true,
+		MaxAge:   -1,
+		Secure:   true,
+		Name:     "at",
+		Value:    "",
+	})
+
+	http.SetCookie(writer, &http.Cookie{
+		HttpOnly: true,
+		MaxAge:   -1,
+		Secure:   true,
+		Name:     "rt",
+		Value:    "",
+	})
 }
 
 func RegisterUserService(

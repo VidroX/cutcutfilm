@@ -18,7 +18,7 @@ import (
 // generated with a version of connect newer than the one compiled into your binary. You can fix the
 // problem by either regenerating this code with an older version of connect or updating the connect
 // version compiled into your binary.
-const _ = connect.IsAtLeastVersion0_1_0
+const _ = connect.IsAtLeastVersion1_13_0
 
 const (
 	// IdentityServiceName is the fully-qualified name of the IdentityService service.
@@ -54,6 +54,26 @@ const (
 	// IdentityServiceGetKeySetProcedure is the fully-qualified name of the IdentityService's GetKeySet
 	// RPC.
 	IdentityServiceGetKeySetProcedure = "/identity.v1.IdentityService/GetKeySet"
+	// IdentityServiceRevokeTokenProcedure is the fully-qualified name of the IdentityService's
+	// RevokeToken RPC.
+	IdentityServiceRevokeTokenProcedure = "/identity.v1.IdentityService/RevokeToken"
+	// IdentityServiceIsTokenRevokedProcedure is the fully-qualified name of the IdentityService's
+	// IsTokenRevoked RPC.
+	IdentityServiceIsTokenRevokedProcedure = "/identity.v1.IdentityService/IsTokenRevoked"
+)
+
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	identityServiceServiceDescriptor                  = v1.File_identity_v1_identity_proto.Services().ByName("IdentityService")
+	identityServiceIssueTokensMethodDescriptor        = identityServiceServiceDescriptor.Methods().ByName("IssueTokens")
+	identityServiceIssueServiceTokenMethodDescriptor  = identityServiceServiceDescriptor.Methods().ByName("IssueServiceToken")
+	identityServiceRefreshTokenMethodDescriptor       = identityServiceServiceDescriptor.Methods().ByName("RefreshToken")
+	identityServiceSetUserPermissionsMethodDescriptor = identityServiceServiceDescriptor.Methods().ByName("SetUserPermissions")
+	identityServiceGetUserPermissionsMethodDescriptor = identityServiceServiceDescriptor.Methods().ByName("GetUserPermissions")
+	identityServiceValidateUserMethodDescriptor       = identityServiceServiceDescriptor.Methods().ByName("ValidateUser")
+	identityServiceGetKeySetMethodDescriptor          = identityServiceServiceDescriptor.Methods().ByName("GetKeySet")
+	identityServiceRevokeTokenMethodDescriptor        = identityServiceServiceDescriptor.Methods().ByName("RevokeToken")
+	identityServiceIsTokenRevokedMethodDescriptor     = identityServiceServiceDescriptor.Methods().ByName("IsTokenRevoked")
 )
 
 // IdentityServiceClient is a client for the identity.v1.IdentityService service.
@@ -65,6 +85,8 @@ type IdentityServiceClient interface {
 	GetUserPermissions(context.Context, *connect.Request[v1.GetUserPermissionsRequest]) (*connect.Response[v1.GetUserPermissionsResponse], error)
 	ValidateUser(context.Context, *connect.Request[v1.ValidateUserRequest]) (*connect.Response[v1.ValidateUserResponse], error)
 	GetKeySet(context.Context, *connect.Request[v1.GetKeySetRequest]) (*connect.Response[v1.GetKeySetResponse], error)
+	RevokeToken(context.Context, *connect.Request[v1.RevokeTokenRequest]) (*connect.Response[v1.RevokeTokenResponse], error)
+	IsTokenRevoked(context.Context, *connect.Request[v1.IsTokenRevokedRequest]) (*connect.Response[v1.IsTokenRevokedResponse], error)
 }
 
 // NewIdentityServiceClient constructs a client for the identity.v1.IdentityService service. By
@@ -80,37 +102,56 @@ func NewIdentityServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 		issueTokens: connect.NewClient[v1.IssueTokensRequest, v1.IssueTokensResponse](
 			httpClient,
 			baseURL+IdentityServiceIssueTokensProcedure,
-			opts...,
+			connect.WithSchema(identityServiceIssueTokensMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		issueServiceToken: connect.NewClient[v1.IssueServiceTokenRequest, v1.IssueServiceTokenResponse](
 			httpClient,
 			baseURL+IdentityServiceIssueServiceTokenProcedure,
-			opts...,
+			connect.WithSchema(identityServiceIssueServiceTokenMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		refreshToken: connect.NewClient[v1.RefreshTokenRequest, v1.RefreshTokenResponse](
 			httpClient,
 			baseURL+IdentityServiceRefreshTokenProcedure,
-			opts...,
+			connect.WithSchema(identityServiceRefreshTokenMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		setUserPermissions: connect.NewClient[v1.SetUserPermissionsRequest, v1.SetUserPermissionsResponse](
 			httpClient,
 			baseURL+IdentityServiceSetUserPermissionsProcedure,
-			opts...,
+			connect.WithSchema(identityServiceSetUserPermissionsMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		getUserPermissions: connect.NewClient[v1.GetUserPermissionsRequest, v1.GetUserPermissionsResponse](
 			httpClient,
 			baseURL+IdentityServiceGetUserPermissionsProcedure,
-			opts...,
+			connect.WithSchema(identityServiceGetUserPermissionsMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		validateUser: connect.NewClient[v1.ValidateUserRequest, v1.ValidateUserResponse](
 			httpClient,
 			baseURL+IdentityServiceValidateUserProcedure,
-			opts...,
+			connect.WithSchema(identityServiceValidateUserMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 		getKeySet: connect.NewClient[v1.GetKeySetRequest, v1.GetKeySetResponse](
 			httpClient,
 			baseURL+IdentityServiceGetKeySetProcedure,
-			opts...,
+			connect.WithSchema(identityServiceGetKeySetMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		revokeToken: connect.NewClient[v1.RevokeTokenRequest, v1.RevokeTokenResponse](
+			httpClient,
+			baseURL+IdentityServiceRevokeTokenProcedure,
+			connect.WithSchema(identityServiceRevokeTokenMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
+		isTokenRevoked: connect.NewClient[v1.IsTokenRevokedRequest, v1.IsTokenRevokedResponse](
+			httpClient,
+			baseURL+IdentityServiceIsTokenRevokedProcedure,
+			connect.WithSchema(identityServiceIsTokenRevokedMethodDescriptor),
+			connect.WithClientOptions(opts...),
 		),
 	}
 }
@@ -124,6 +165,8 @@ type identityServiceClient struct {
 	getUserPermissions *connect.Client[v1.GetUserPermissionsRequest, v1.GetUserPermissionsResponse]
 	validateUser       *connect.Client[v1.ValidateUserRequest, v1.ValidateUserResponse]
 	getKeySet          *connect.Client[v1.GetKeySetRequest, v1.GetKeySetResponse]
+	revokeToken        *connect.Client[v1.RevokeTokenRequest, v1.RevokeTokenResponse]
+	isTokenRevoked     *connect.Client[v1.IsTokenRevokedRequest, v1.IsTokenRevokedResponse]
 }
 
 // IssueTokens calls identity.v1.IdentityService.IssueTokens.
@@ -161,6 +204,16 @@ func (c *identityServiceClient) GetKeySet(ctx context.Context, req *connect.Requ
 	return c.getKeySet.CallUnary(ctx, req)
 }
 
+// RevokeToken calls identity.v1.IdentityService.RevokeToken.
+func (c *identityServiceClient) RevokeToken(ctx context.Context, req *connect.Request[v1.RevokeTokenRequest]) (*connect.Response[v1.RevokeTokenResponse], error) {
+	return c.revokeToken.CallUnary(ctx, req)
+}
+
+// IsTokenRevoked calls identity.v1.IdentityService.IsTokenRevoked.
+func (c *identityServiceClient) IsTokenRevoked(ctx context.Context, req *connect.Request[v1.IsTokenRevokedRequest]) (*connect.Response[v1.IsTokenRevokedResponse], error) {
+	return c.isTokenRevoked.CallUnary(ctx, req)
+}
+
 // IdentityServiceHandler is an implementation of the identity.v1.IdentityService service.
 type IdentityServiceHandler interface {
 	IssueTokens(context.Context, *connect.Request[v1.IssueTokensRequest]) (*connect.Response[v1.IssueTokensResponse], error)
@@ -170,6 +223,8 @@ type IdentityServiceHandler interface {
 	GetUserPermissions(context.Context, *connect.Request[v1.GetUserPermissionsRequest]) (*connect.Response[v1.GetUserPermissionsResponse], error)
 	ValidateUser(context.Context, *connect.Request[v1.ValidateUserRequest]) (*connect.Response[v1.ValidateUserResponse], error)
 	GetKeySet(context.Context, *connect.Request[v1.GetKeySetRequest]) (*connect.Response[v1.GetKeySetResponse], error)
+	RevokeToken(context.Context, *connect.Request[v1.RevokeTokenRequest]) (*connect.Response[v1.RevokeTokenResponse], error)
+	IsTokenRevoked(context.Context, *connect.Request[v1.IsTokenRevokedRequest]) (*connect.Response[v1.IsTokenRevokedResponse], error)
 }
 
 // NewIdentityServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -181,37 +236,56 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 	identityServiceIssueTokensHandler := connect.NewUnaryHandler(
 		IdentityServiceIssueTokensProcedure,
 		svc.IssueTokens,
-		opts...,
+		connect.WithSchema(identityServiceIssueTokensMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	identityServiceIssueServiceTokenHandler := connect.NewUnaryHandler(
 		IdentityServiceIssueServiceTokenProcedure,
 		svc.IssueServiceToken,
-		opts...,
+		connect.WithSchema(identityServiceIssueServiceTokenMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	identityServiceRefreshTokenHandler := connect.NewUnaryHandler(
 		IdentityServiceRefreshTokenProcedure,
 		svc.RefreshToken,
-		opts...,
+		connect.WithSchema(identityServiceRefreshTokenMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	identityServiceSetUserPermissionsHandler := connect.NewUnaryHandler(
 		IdentityServiceSetUserPermissionsProcedure,
 		svc.SetUserPermissions,
-		opts...,
+		connect.WithSchema(identityServiceSetUserPermissionsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	identityServiceGetUserPermissionsHandler := connect.NewUnaryHandler(
 		IdentityServiceGetUserPermissionsProcedure,
 		svc.GetUserPermissions,
-		opts...,
+		connect.WithSchema(identityServiceGetUserPermissionsMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	identityServiceValidateUserHandler := connect.NewUnaryHandler(
 		IdentityServiceValidateUserProcedure,
 		svc.ValidateUser,
-		opts...,
+		connect.WithSchema(identityServiceValidateUserMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	identityServiceGetKeySetHandler := connect.NewUnaryHandler(
 		IdentityServiceGetKeySetProcedure,
 		svc.GetKeySet,
-		opts...,
+		connect.WithSchema(identityServiceGetKeySetMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	identityServiceRevokeTokenHandler := connect.NewUnaryHandler(
+		IdentityServiceRevokeTokenProcedure,
+		svc.RevokeToken,
+		connect.WithSchema(identityServiceRevokeTokenMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
+	identityServiceIsTokenRevokedHandler := connect.NewUnaryHandler(
+		IdentityServiceIsTokenRevokedProcedure,
+		svc.IsTokenRevoked,
+		connect.WithSchema(identityServiceIsTokenRevokedMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
 	)
 	return "/identity.v1.IdentityService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -229,6 +303,10 @@ func NewIdentityServiceHandler(svc IdentityServiceHandler, opts ...connect.Handl
 			identityServiceValidateUserHandler.ServeHTTP(w, r)
 		case IdentityServiceGetKeySetProcedure:
 			identityServiceGetKeySetHandler.ServeHTTP(w, r)
+		case IdentityServiceRevokeTokenProcedure:
+			identityServiceRevokeTokenHandler.ServeHTTP(w, r)
+		case IdentityServiceIsTokenRevokedProcedure:
+			identityServiceIsTokenRevokedHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -264,4 +342,12 @@ func (UnimplementedIdentityServiceHandler) ValidateUser(context.Context, *connec
 
 func (UnimplementedIdentityServiceHandler) GetKeySet(context.Context, *connect.Request[v1.GetKeySetRequest]) (*connect.Response[v1.GetKeySetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("identity.v1.IdentityService.GetKeySet is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) RevokeToken(context.Context, *connect.Request[v1.RevokeTokenRequest]) (*connect.Response[v1.RevokeTokenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("identity.v1.IdentityService.RevokeToken is not implemented"))
+}
+
+func (UnimplementedIdentityServiceHandler) IsTokenRevoked(context.Context, *connect.Request[v1.IsTokenRevokedRequest]) (*connect.Response[v1.IsTokenRevokedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("identity.v1.IdentityService.IsTokenRevoked is not implemented"))
 }

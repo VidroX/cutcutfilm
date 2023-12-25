@@ -51,10 +51,11 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
-	HasPermission   func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string) (res interface{}, err error)
+	HasPermission   func(ctx context.Context, obj interface{}, next graphql.Resolver, permission string, fallback *string) (res interface{}, err error)
+	HasPermissions  func(ctx context.Context, obj interface{}, next graphql.Resolver, permissions []string, requireAll bool, fallback *string) (res interface{}, err error)
 	IsAuthenticated func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 	NoUser          func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
-	RefreshToken    func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
+	RefreshToken    func(ctx context.Context, obj interface{}, next graphql.Resolver, allowExternal bool) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -64,6 +65,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		Login              func(childComplexity int, credential string, password string) int
+		Logout             func(childComplexity int) int
 		Register           func(childComplexity int, userInfo model.UserRegistrationInput) int
 		SetUserPermissions func(childComplexity int, userInfo model.SetUserPermissionsInput) int
 	}
@@ -125,6 +127,7 @@ type MutationResolver interface {
 	Login(ctx context.Context, credential string, password string) (*model.UserWithToken, error)
 	Register(ctx context.Context, userInfo model.UserRegistrationInput) (*model.UserWithToken, error)
 	SetUserPermissions(ctx context.Context, userInfo model.SetUserPermissionsInput) (*model.User, error)
+	Logout(ctx context.Context) (bool, error)
 }
 type QueryResolver interface {
 	RefreshAccessToken(ctx context.Context) (*model.Token, error)
@@ -177,6 +180,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.Login(childComplexity, args["credential"].(string), args["password"].(string)), true
+
+	case "Mutation.logout":
+		if e.complexity.Mutation.Logout == nil {
+			break
+		}
+
+		return e.complexity.Mutation.Logout(childComplexity), true
 
 	case "Mutation.register":
 		if e.complexity.Mutation.Register == nil {
@@ -594,6 +604,63 @@ func (ec *executionContext) dir_hasPermission_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["permission"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["fallback"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fallback"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["fallback"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) dir_hasPermissions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []string
+	if tmp, ok := rawArgs["permissions"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permissions"))
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["permissions"] = arg0
+	var arg1 bool
+	if tmp, ok := rawArgs["requireAll"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requireAll"))
+		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["requireAll"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["fallback"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fallback"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["fallback"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) dir_refreshToken_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 bool
+	if tmp, ok := rawArgs["allowExternal"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowExternal"))
+		arg0, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["allowExternal"] = arg0
 	return args, nil
 }
 
@@ -1022,7 +1089,7 @@ func (ec *executionContext) _Mutation_setUserPermissions(ctx context.Context, fi
 			if ec.directives.HasPermission == nil {
 				return nil, errors.New("directive hasPermission is not implemented")
 			}
-			return ec.directives.HasPermission(ctx, nil, directive0, permission)
+			return ec.directives.HasPermission(ctx, nil, directive0, permission, nil)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1084,6 +1151,74 @@ func (ec *executionContext) fieldContext_Mutation_setUserPermissions(ctx context
 	if fc.Args, err = ec.field_Mutation_setUserPermissions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_logout(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_logout(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().Logout(rctx)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			allowExternal, err := ec.unmarshalNBoolean2bool(ctx, true)
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.RefreshToken == nil {
+				return nil, errors.New("directive refreshToken is not implemented")
+			}
+			return ec.directives.RefreshToken(ctx, nil, directive0, allowExternal)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(bool); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be bool`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_logout(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -1414,10 +1549,14 @@ func (ec *executionContext) _Query_refreshAccessToken(ctx context.Context, field
 			return ec.resolvers.Query().RefreshAccessToken(rctx)
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
+			allowExternal, err := ec.unmarshalNBoolean2bool(ctx, false)
+			if err != nil {
+				return nil, err
+			}
 			if ec.directives.RefreshToken == nil {
 				return nil, errors.New("directive refreshToken is not implemented")
 			}
-			return ec.directives.RefreshToken(ctx, nil, directive0)
+			return ec.directives.RefreshToken(ctx, nil, directive0, allowExternal)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1484,10 +1623,18 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 			return ec.resolvers.Query().User(rctx, fc.Args["userId"].(*string))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			if ec.directives.IsAuthenticated == nil {
-				return nil, errors.New("directive isAuthenticated is not implemented")
+			permission, err := ec.unmarshalNString2string(ctx, "read:self")
+			if err != nil {
+				return nil, err
 			}
-			return ec.directives.IsAuthenticated(ctx, nil, directive0)
+			fallback, err := ec.unmarshalOString2ᚖstring(ctx, "read:admin")
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.HasPermission == nil {
+				return nil, errors.New("directive hasPermission is not implemented")
+			}
+			return ec.directives.HasPermission(ctx, nil, directive0, permission, fallback)
 		}
 
 		tmp, err := directive1(rctx)
@@ -1578,7 +1725,7 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 			if ec.directives.HasPermission == nil {
 				return nil, errors.New("directive hasPermission is not implemented")
 			}
-			return ec.directives.HasPermission(ctx, nil, directive0, permission)
+			return ec.directives.HasPermission(ctx, nil, directive0, permission, nil)
 		}
 
 		tmp, err := directive1(rctx)
@@ -4502,6 +4649,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "logout":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_logout(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5465,6 +5619,38 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalNString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalNString2ᚕᚖstring(ctx context.Context, v interface{}) ([]*string, error) {

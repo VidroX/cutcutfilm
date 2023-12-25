@@ -30,6 +30,7 @@ const defaultPort = "4001"
 var directivesList = graph.DirectiveRoot{
 	IsAuthenticated: directives.IsAuthenticatedDirective,
 	HasPermission:   directives.HasPermissionDirective,
+	HasPermissions:  directives.HasPermissionsDirective,
 	RefreshToken:    directives.RefreshTokenOnlyDirective,
 	NoUser:          directives.NoAuthDirective,
 }
@@ -100,7 +101,11 @@ func main() {
 		http.Handle("/", playground.Handler("GraphQL Playground", "/gql"))
 	}
 
-	http.Handle("/gql", localizerMiddleware(middleware.AuthMiddleware(writerMiddleware(srv))))
+	http.Handle("/gql", localizerMiddleware(
+		middleware.AuthMiddleware(
+			writerMiddleware(srv),
+		),
+	))
 
 	if debug {
 		log.Printf("Server ready at http://localhost:%s/gql. GraphQL Playground available at http://localhost:%s", port, port)

@@ -3,18 +3,18 @@ module github.com/VidroX/cutcutfilm/services/identity
 go 1.20
 
 require (
-	connectrpc.com/connect v1.12.0
+	connectrpc.com/connect v1.14.0
 	connectrpc.com/grpcreflect v1.2.0
-	github.com/VidroX/cutcutfilm-shared v0.0.0-20231126084750-be9aa9d09f5d
+	github.com/VidroX/cutcutfilm-shared v0.0.0-20231225065128-1aa37d8566a8
 	github.com/emirpasic/gods v1.18.1
 	github.com/google/uuid v1.3.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/joho/godotenv v1.5.1
 	github.com/lestrrat-go/jwx/v2 v2.0.16
-	golang.org/x/net v0.14.0
-	google.golang.org/grpc v1.59.0
-	google.golang.org/protobuf v1.31.0
+	golang.org/x/net v0.17.0
+	google.golang.org/grpc v1.60.1
+	google.golang.org/protobuf v1.32.0
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.25.5
 )
@@ -40,5 +40,5 @@ require (
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97 // indirect
 )

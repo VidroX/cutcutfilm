@@ -10,6 +10,8 @@ service IdentityService {
   rpc GetUserPermissions (GetUserPermissionsRequest) returns (GetUserPermissionsResponse) {}
   rpc ValidateUser (ValidateUserRequest) returns (ValidateUserResponse) {}
   rpc GetKeySet (GetKeySetRequest) returns (GetKeySetResponse) {}
+  rpc RevokeToken (RevokeTokenRequest) returns (RevokeTokenResponse) {}
+  rpc IsTokenRevoked (IsTokenRevokedRequest) returns (IsTokenRevokedResponse) {}
 }
 
 message IssueTokensRequest {
@@ -74,4 +76,21 @@ message GetKeySetRequest {}
 
 message GetKeySetResponse {
   string encoded_keys = 1;
+}
+
+message RevokeTokenRequest {
+  string user_id = 1;
+  string token = 2;
+}
+
+message RevokeTokenResponse {
+  bool is_successful = 1;
+}
+
+message IsTokenRevokedRequest {
+  string token = 1;
+}
+
+message IsTokenRevokedResponse {
+  bool is_revoked = 1;
 }

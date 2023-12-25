@@ -17,6 +17,7 @@ import (
 	"github.com/VidroX/cutcutfilm-shared/tokens"
 	"github.com/VidroX/cutcutfilm-shared/translator"
 	"github.com/VidroX/cutcutfilm-shared/utils"
+	"github.com/VidroX/cutcutfilm/services/identity/core/database/models"
 	"github.com/VidroX/cutcutfilm/services/identity/core/environment"
 	"github.com/VidroX/cutcutfilm/services/identity/core/jwx"
 	pb "github.com/VidroX/cutcutfilm/services/identity/proto/identity/v1"
@@ -33,10 +34,9 @@ func (s *server) IssueTokens(ctx context.Context, req *connect.Request[pb.IssueT
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	isAuthorized, ok := ctx.Value("authorized").(bool)
-	userTokenType, ok2 := ctx.Value("user_token_type").(*tokens.TokenType)
+	user, ok := ctx.Value("user").(models.User)
 
-	if !ok || !isAuthorized || !ok2 || userTokenType == nil || *userTokenType != tokens.TokenTypeApplicationRequest {
+	if !ok || user.TokenType != tokens.TokenTypeApplicationRequest {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
 			log.Println("Cannot issue tokens: user is not authorized or does not have a valid token type")
 		}
@@ -88,11 +88,9 @@ func (s *server) IssueServiceToken(ctx context.Context, req *connect.Request[pb.
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	isAuthorized, ok := ctx.Value("authorized").(bool)
-	userId, ok2 := ctx.Value("user_id").(string)
-	userTokenType, ok3 := ctx.Value("user_token_type").(*tokens.TokenType)
+	user, ok := ctx.Value("user").(models.User)
 
-	if !ok || !isAuthorized || !ok2 || !ok3 || userTokenType == nil || *userTokenType == tokens.TokenTypeApplicationRequest {
+	if !ok || user.TokenType == tokens.TokenTypeApplicationRequest {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
 			log.Println("Cannot issue service token: user is not authorized or does not have a valid token type")
 		}
@@ -103,9 +101,9 @@ func (s *server) IssueServiceToken(ctx context.Context, req *connect.Request[pb.
 		)
 	}
 
-	_, err := uuid.Parse(userId)
+	_, err := uuid.Parse(user.UserID)
 
-	if utils.UtilString(userId).IsEmpty() || err != nil {
+	if utils.UtilString(user.UserID).IsEmpty() || err != nil {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
 			log.Println("Cannot issue service token: userId is empty")
 		}
@@ -113,7 +111,7 @@ func (s *server) IssueServiceToken(ctx context.Context, req *connect.Request[pb.
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysUserRequiredError).Translate(localizer))
 	}
 
-	permissionsSlice, err2 := s.services.PermissionsService.GetOrSetDefaultUserPermissions(userId)
+	permissionsSlice, err2 := s.services.PermissionsService.GetOrSetDefaultUserPermissions(user.UserID)
 
 	if err2 != nil {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
@@ -125,8 +123,8 @@ func (s *server) IssueServiceToken(ctx context.Context, req *connect.Request[pb.
 
 	return connect.NewResponse(&pb.IssueServiceTokenResponse{
 		Token: jwx.CreateToken(&jwx.TokenParams{
-			TokenType:   *userTokenType,
-			UserId:      &userId,
+			TokenType:   user.TokenType,
+			UserId:      &user.UserID,
 			Permissions: permissionsSlice,
 			ExpiryTime:  &jwx.DurationWrapper{Duration: time.Minute},
 			AddAudience: false,
@@ -140,13 +138,11 @@ func (s *server) RefreshToken(ctx context.Context, req *connect.Request[pb.Refre
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	isAuthorized, ok := ctx.Value("authorized").(bool)
-	userId, ok2 := ctx.Value("user_id").(string)
-	userTokenType, ok3 := ctx.Value("user_token_type").(*tokens.TokenType)
+	user, ok := ctx.Value("user").(models.User)
 
-	if !ok || !isAuthorized || !ok2 || !ok3 || userTokenType == nil || *userTokenType != tokens.TokenTypeRefresh {
+	if !ok || user.TokenType != tokens.TokenTypeRefresh {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
-			log.Println("Cannot issue new access token: user is not authorized or does not have a valid token type")
+			log.Printf("Cannot issue new access token: user is not authorized or does not have a valid token type (current token type: %s)\n", user.TokenType.String())
 		}
 
 		return nil, status.Errorf(
@@ -155,7 +151,7 @@ func (s *server) RefreshToken(ctx context.Context, req *connect.Request[pb.Refre
 		)
 	}
 
-	permissionsSlice, err := s.services.PermissionsService.GetOrSetDefaultUserPermissions(userId)
+	permissionsSlice, err := s.services.PermissionsService.GetOrSetDefaultUserPermissions(user.UserID)
 
 	if err != nil {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
@@ -168,7 +164,7 @@ func (s *server) RefreshToken(ctx context.Context, req *connect.Request[pb.Refre
 	return connect.NewResponse(&pb.RefreshTokenResponse{
 		Token: jwx.CreateToken(&jwx.TokenParams{
 			TokenType:   tokens.TokenTypeAccess,
-			UserId:      &userId,
+			UserId:      &user.UserID,
 			Permissions: permissionsSlice,
 			AddAudience: true,
 		}),
@@ -181,12 +177,9 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	isAuthorized, ok := ctx.Value("authorized").(bool)
-	userId, ok2 := ctx.Value("user_id").(string)
-	userTokenType, ok3 := ctx.Value("user_token_type").(*tokens.TokenType)
-	userPermissions, ok4 := ctx.Value("user_permissions").([]permissions.Permission)
+	user, ok := ctx.Value("user").(models.User)
 
-	if !ok || !isAuthorized || !ok2 || !ok3 || !ok4 || userPermissions == nil || userTokenType == nil || *userTokenType != tokens.TokenTypeAccess {
+	if !ok || user.TokenType != tokens.TokenTypeAccess {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
 			log.Println("Cannot set user permissions: user is not authorized or does not have a valid token type")
 		}
@@ -201,17 +194,14 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 
 	requestedUserId := req.Msg.GetUserId()
 	if utils.UtilString(requestedUserId).IsEmpty() {
-		requestedUserId = userId
+		requestedUserId = user.UserID
 	}
 
-	isAdmin := slices.ContainsFunc(
-		userPermissions,
-		func(p permissions.Permission) bool { return p.Action == permissions.AdminWritePermissionAction },
-	)
+	isAdmin := user.HasPermission(permissions.AdminWritePermissionAction)
 
 	if !isAdmin {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
-			log.Printf("Cannot set user permissions: user %s is not admin\n", userId)
+			log.Printf("Cannot set user permissions: user %s is not admin\n", user.UserID)
 		}
 
 		return nil, status.Errorf(
@@ -220,7 +210,7 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 		)
 	}
 
-	if requestedUserId == userId {
+	if requestedUserId == user.UserID {
 		hasAdminWritePermission := slices.ContainsFunc(
 			permissionsSlice,
 			func(p permissions.Permission) bool { return p.Action == permissions.AdminWritePermissionAction },
@@ -252,19 +242,19 @@ func (s *server) SetUserPermissions(ctx context.Context, req *connect.Request[pb
 		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysInternalError).Translate(localizer))
 	}
 
-	user := &pb.UserWithPermissions{
+	updatedUser := &pb.UserWithPermissions{
 		UserId:      requestedUserId,
 		Permissions: mapPermissionsToProtoPermissions(permissionsSlice),
 	}
 
 	return connect.NewResponse(&pb.SetUserPermissionsResponse{
 		Token: jwx.CreateToken(&jwx.TokenParams{
-			TokenType:   *userTokenType,
+			TokenType:   user.TokenType,
 			UserId:      &requestedUserId,
 			Permissions: permissionsSlice,
 			AddAudience: true,
 		}),
-		User: user,
+		User: updatedUser,
 	}), nil
 }
 
@@ -274,12 +264,9 @@ func (s *server) GetUserPermissions(ctx context.Context, req *connect.Request[pb
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	isAuthorized, ok := ctx.Value("authorized").(bool)
-	userId, ok2 := ctx.Value("user_id").(string)
-	userTokenType, ok3 := ctx.Value("user_token_type").(*tokens.TokenType)
-	userPermissions, _ := ctx.Value("user_permissions").([]permissions.Permission)
+	user, ok := ctx.Value("user").(models.User)
 
-	if !ok || !isAuthorized || !ok2 || !ok3 || userTokenType == nil || *userTokenType != tokens.TokenTypeAccess {
+	if !ok || user.TokenType != tokens.TokenTypeAccess {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
 			log.Println("Cannot get user permissions: user is not authorized or does not have a valid token type")
 		}
@@ -292,17 +279,14 @@ func (s *server) GetUserPermissions(ctx context.Context, req *connect.Request[pb
 
 	requestedUserId := req.Msg.GetUserId()
 	if utils.UtilString(requestedUserId).IsEmpty() {
-		requestedUserId = userId
+		requestedUserId = user.UserID
 	}
 
-	isAdmin := slices.ContainsFunc(
-		userPermissions,
-		func(p permissions.Permission) bool { return p.Action == permissions.AdminReadPermissionAction },
-	)
+	isAdmin := user.HasPermission(permissions.AdminReadPermissionAction)
 
-	if !isAdmin && requestedUserId != userId {
+	if !isAdmin && requestedUserId != user.UserID {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
-			log.Printf("Cannot get user permissions: user %s does not have admin permissions\n", userId)
+			log.Printf("Cannot get user permissions: user %s does not have admin permissions\n", user.UserID)
 		}
 
 		return nil, status.Errorf(
@@ -314,7 +298,7 @@ func (s *server) GetUserPermissions(ctx context.Context, req *connect.Request[pb
 	var permissionsSlice []permissions.Permission
 	var err *nebulaErrors.APIError
 
-	if requestedUserId == userId {
+	if requestedUserId == user.UserID {
 		permissionsSlice, err = s.services.PermissionsService.GetOrSetDefaultUserPermissions(requestedUserId)
 	} else {
 		permissionsSlice, err = s.services.PermissionsService.GetUserPermissions(requestedUserId)
@@ -340,11 +324,9 @@ func (s *server) ValidateUser(ctx context.Context, req *connect.Request[pb.Valid
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 
-	isAuthorized, ok := ctx.Value("authorized").(bool)
-	userId, ok2 := ctx.Value("user_id").(string)
-	userTokenType, ok3 := ctx.Value("user_token_type").(*tokens.TokenType)
+	user, ok := ctx.Value("user").(models.User)
 
-	if !ok || !isAuthorized || !ok2 || !ok3 || userTokenType == nil {
+	if !ok {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
 			log.Println("Cannot validate user: user is not authorized or does not have a valid token type")
 		}
@@ -358,7 +340,7 @@ func (s *server) ValidateUser(ctx context.Context, req *connect.Request[pb.Valid
 	var permissionsSlice []permissions.Permission
 	var err *nebulaErrors.APIError
 
-	permissionsSlice, err = s.services.PermissionsService.GetOrSetDefaultUserPermissions(userId)
+	permissionsSlice, err = s.services.PermissionsService.GetOrSetDefaultUserPermissions(user.UserID)
 
 	if err != nil {
 		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
@@ -369,9 +351,99 @@ func (s *server) ValidateUser(ctx context.Context, req *connect.Request[pb.Valid
 	}
 
 	return connect.NewResponse(&pb.ValidateUserResponse{
-		UserId:      userId,
-		TokenType:   userTokenType.String(),
+		UserId:      user.UserID,
+		TokenType:   user.TokenType.String(),
 		Permissions: mapPermissionsToProtoPermissions(permissionsSlice),
+	}), nil
+}
+
+func (s *server) RevokeToken(ctx context.Context, req *connect.Request[pb.RevokeTokenRequest]) (*connect.Response[pb.RevokeTokenResponse], error) {
+	localizer, ok := ctx.Value(translator.Key).(*translator.NebulaLocalizer)
+	if !ok || localizer == nil {
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+
+	user, ok := ctx.Value("user").(models.User)
+
+	if !ok || user.TokenType == tokens.TokenTypeApplicationRequest {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot revoke user token: user is not authorized")
+		}
+
+		return nil, status.Errorf(
+			codes.Unauthenticated,
+			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
+		)
+	}
+
+	validatedToken, tokenType := jwx.ValidateToken(req.Msg.GetToken())
+	if validatedToken == nil || tokenType == nil || *tokenType == tokens.TokenTypeApplicationRequest {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot revoke user token: there was an error while parsing provided token")
+		}
+
+		return nil, status.Errorf(codes.Internal, translator.WithKey(resources.KeysProvidedTokenInvalidOrExpiredError).Translate(localizer))
+	}
+
+	requestedUserId := req.Msg.GetUserId()
+	if utils.UtilString(requestedUserId).IsEmpty() {
+		requestedUserId = user.UserID
+	}
+
+	isAdmin := user.HasPermission(permissions.AdminWritePermissionAction)
+
+	if !isAdmin && (requestedUserId != user.UserID || user.UserID != validatedToken.Subject()) {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Printf("Cannot revoke user token: user %s does not have permissions to revoke provided token\n", user.UserID)
+		}
+
+		return nil, status.Errorf(
+			codes.Internal,
+			translator.WithKey(resources.KeysNotEnoughPermissions).Translate(localizer),
+		)
+	}
+
+	err := s.services.TokensService.RevokeToken(req.Msg.GetToken())
+
+	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Printf("Cannot revoke user token: %s\n", err.Error.Error())
+		}
+
+		return nil, status.Errorf(
+			codes.Internal,
+			translator.WithKey(resources.KeysNotEnoughPermissions).Translate(localizer),
+		)
+	}
+
+	return connect.NewResponse(&pb.RevokeTokenResponse{
+		IsSuccessful: true,
+	}), nil
+}
+
+func (s *server) IsTokenRevoked(ctx context.Context, req *connect.Request[pb.IsTokenRevokedRequest]) (*connect.Response[pb.IsTokenRevokedResponse], error) {
+	localizer, ok := ctx.Value(translator.Key).(*translator.NebulaLocalizer)
+	if !ok || localizer == nil {
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+
+	user, ok := ctx.Value("user").(models.User)
+
+	if !ok || user.TokenType != tokens.TokenTypeApplicationRequest {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Println("Cannot check token revocation: user is not authorized")
+		}
+
+		return nil, status.Errorf(
+			codes.Unauthenticated,
+			translator.WithKey(resources.KeysInvalidOrExpiredTokenError).Translate(localizer),
+		)
+	}
+
+	isRevoked := s.services.TokensService.IsTokenRevoked(req.Msg.GetToken())
+
+	return connect.NewResponse(&pb.IsTokenRevokedResponse{
+		IsRevoked: isRevoked,
 	}), nil
 }
 

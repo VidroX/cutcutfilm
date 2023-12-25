@@ -6,6 +6,7 @@ package graph
 
 import (
 	"context"
+
 	"github.com/VidroX/cutcutfilm-shared/contextuser"
 	sharedErrors "github.com/VidroX/cutcutfilm-shared/errors"
 	database "github.com/VidroX/cutcutfilm-shared/pagination"
@@ -51,6 +52,17 @@ func (r *mutationResolver) SetUserPermissions(ctx context.Context, userInfo mode
 	}
 
 	return user, nil
+}
+
+// Logout is the resolver for the logout field.
+func (r *mutationResolver) Logout(ctx context.Context) (bool, error) {
+	isLoggedOut, err := r.Services.UserService.Logout(ctx)
+
+	if err != nil {
+		return isLoggedOut, sharedErrors.FormatError(graph.GetLocalizer(ctx), err)
+	}
+
+	return isLoggedOut, nil
 }
 
 // RefreshAccessToken is the resolver for the refreshAccessToken field.

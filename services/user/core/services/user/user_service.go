@@ -454,6 +454,7 @@ func setTokenCookies(ctx context.Context, accessToken string, refreshToken strin
 			Secure:   true,
 			Name:     "at",
 			Value:    accessToken,
+			Path:     "/",
 		})
 	}
 
@@ -466,6 +467,7 @@ func setTokenCookies(ctx context.Context, accessToken string, refreshToken strin
 			Secure:   true,
 			Name:     "rt",
 			Value:    refreshToken,
+			Path:     "/",
 		})
 	}
 }
@@ -483,6 +485,7 @@ func clearTokenCookies(ctx context.Context) {
 		Secure:   true,
 		Name:     "at",
 		Value:    "",
+		Path:     "/",
 	})
 
 	http.SetCookie(writer, &http.Cookie{
@@ -491,6 +494,7 @@ func clearTokenCookies(ctx context.Context) {
 		Secure:   true,
 		Name:     "rt",
 		Value:    "",
+		Path:     "/",
 	})
 }
 

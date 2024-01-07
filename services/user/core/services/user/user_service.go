@@ -103,40 +103,7 @@ func (service *userService) GetUserPermissions(ctx context.Context, userId strin
 		return nil, &general.ErrNotEnoughPermissions
 	}
 
-	req := connect.NewRequest(&identityv1.GetUserPermissionsRequest{
-		UserId: userId,
-	})
-
-	req.Header().Add("X-Api-Key", os.Getenv(environment.KeysIdentityServiceApiKey))
-	req.Header().Add("Authorization", currentUser.SuppliedToken)
-
-	if service.identityServiceClient == nil {
-		return nil, &general.ErrInternal
-	}
-
-	resp, err := (*service.identityServiceClient).GetUserPermissions(ctx, req)
-
-	if err != nil {
-		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
-			log.Println(err)
-		}
-
-		return nil, &general.ErrInternal
-	}
-
-	var userPermissions []*permissions.Permission
-	for _, userPermission := range resp.Msg.Permissions {
-		if userPermission == nil {
-			continue
-		}
-
-		userPermissions = append(userPermissions, &permissions.Permission{
-			Action:      userPermission.GetAction(),
-			Description: userPermission.GetDescription(),
-		})
-	}
-
-	return userPermissions, nil
+	return getUserPermissions(service.identityServiceClient, ctx, userId, currentUser.SuppliedToken)
 }
 
 func (service *userService) Login(ctx context.Context, credential string, password string) (*model.UserWithToken, []*nebulaErrors.APIError) {
@@ -170,6 +137,14 @@ func (service *userService) Login(ctx context.Context, credential string, passwo
 	if err2 != nil || userTokens == nil {
 		return nil, []*nebulaErrors.APIError{err2}
 	}
+
+	permissions, err2 := getUserPermissions(service.identityServiceClient, ctx, dbUser.ID, (*userTokens).Access)
+
+	if err2 != nil {
+		return nil, []*nebulaErrors.APIError{err2}
+	}
+
+	dbUser.Permissions = permissions
 
 	setTokenCookies(ctx, (*userTokens).Access, (*userTokens).Refresh, true)
 
@@ -225,6 +200,14 @@ func (service *userService) Register(ctx context.Context, userInfo model.UserReg
 	if err2 != nil || userTokens == nil {
 		return nil, []*nebulaErrors.APIError{err2}
 	}
+
+	permissions, err2 := getUserPermissions(service.identityServiceClient, ctx, dbUser.ID, (*userTokens).Access)
+
+	if err2 != nil {
+		return nil, []*nebulaErrors.APIError{err2}
+	}
+
+	dbUser.Permissions = permissions
 
 	setTokenCookies(ctx, (*userTokens).Access, (*userTokens).Refresh, true)
 
@@ -401,6 +384,43 @@ func getUserTokens(client *identityv1connect.IdentityServiceClient, ctx context.
 		Access:  resp.Msg.GetAccessToken(),
 		Refresh: resp.Msg.GetRefreshToken(),
 	}, nil
+}
+
+func getUserPermissions(client *identityv1connect.IdentityServiceClient, ctx context.Context, userId string, token string) ([]*permissions.Permission, *nebulaErrors.APIError) {
+	req := connect.NewRequest(&identityv1.GetUserPermissionsRequest{
+		UserId: userId,
+	})
+
+	req.Header().Add("X-Api-Key", os.Getenv(environment.KeysIdentityServiceApiKey))
+	req.Header().Add("Authorization", token)
+
+	if client == nil {
+		return nil, &general.ErrInternal
+	}
+
+	resp, err := (*client).GetUserPermissions(ctx, req)
+
+	if err != nil {
+		if strings.EqualFold(os.Getenv(environment.KeysDebug), "True") {
+			log.Printf("Could not retrieve user permissions: %s\n", err.Error())
+		}
+
+		return nil, &general.ErrInternal
+	}
+
+	var userPermissions []*permissions.Permission
+	for _, userPermission := range resp.Msg.Permissions {
+		if userPermission == nil {
+			continue
+		}
+
+		userPermissions = append(userPermissions, &permissions.Permission{
+			Action:      userPermission.GetAction(),
+			Description: userPermission.GetDescription(),
+		})
+	}
+
+	return userPermissions, nil
 }
 
 func getResponseWriter(ctx context.Context) http.ResponseWriter {

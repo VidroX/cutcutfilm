@@ -119,6 +119,10 @@ func (r *userResolver) Permissions(ctx context.Context, obj *model.User) ([]*per
 		)
 	}
 
+	if obj.Permissions != nil {
+		return obj.Permissions, nil
+	}
+
 	userPermissions, err := r.Services.UserService.GetUserPermissions(ctx, obj.ID)
 
 	if err != nil {

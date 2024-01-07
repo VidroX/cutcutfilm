@@ -99,3 +99,7 @@ models:
   Permission:
     model:
       - github.com/VidroX/cutcutfilm-shared/permissions.Permission
+  User:
+    fields:
+      permissions:
+        resolver: true

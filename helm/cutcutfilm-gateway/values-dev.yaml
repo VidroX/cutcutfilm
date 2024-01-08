@@ -1,0 +1,21 @@
+namespace: "cutcutfilm-dev"
+name: "cutcutfilm-gateway-dev"
+
+host: "ccf-dev.vidrox.me"
+
+debug: true
+environmentType: "development"
+
+imagePullSecrets: [{ name: cutcutfilm-ghcr }]
+
+services:
+  gateway:
+    replicas: 1
+    path: "/api(/|$)(.*)"
+    name: "cutcutfilm-gateway-dev"
+    secretName: "ccf-dev-secret"
+    image: ""
+    containerPort: 4000
+  identity:
+    name: "cutcutfilm-identity-dev"
+    port: 4002

@@ -1,0 +1,29 @@
+namespace: "cutcutfilm"
+name: "cutcutfilm-identity"
+
+host: "cutcutfilm.com"
+
+debug: false
+
+imagePullSecrets: [{ name: cutcutfilm-ghcr }]
+
+persistence:
+  claimName: "cutcutfilm-storage"
+  mountPath: /app/cutcutfilm/data
+
+services:
+  identity:
+    replicas: 1
+    path: "/identity-service"
+    name: "cutcutfilm-identity"
+    secretName: "ccf-secret"
+    image: ""
+    containerPort: 4002
+    jwtIssuer: "https://cutcutfilm.com/identity-service"
+    accessTokenTTL: 15 # In minutes
+    refreshTokenTTL: 10080 # In minutes
+  identityDatabase:
+    name: "identity-db-postgresql"
+    databaseName: "cutcutfilm-identity"
+    secretName: "ccf-secret"
+    port: 5433

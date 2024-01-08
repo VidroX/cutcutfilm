@@ -1,0 +1,21 @@
+namespace: "cutcutfilm"
+name: "cutcutfilm-gateway"
+
+host: "cutcutfilm.com"
+
+debug: false
+environmentType: "production"
+
+imagePullSecrets: [{ name: cutcutfilm-ghcr }]
+
+services:
+  gateway:
+    replicas: 1
+    path: "/api(/|$)(.*)"
+    name: "cutcutfilm-gateway"
+    secretName: "ccf-secret"
+    image: ""
+    containerPort: 4000
+  identity:
+    name: "cutcutfilm-identity"
+    port: 4002

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: cutcutfilm-gateway
+description: A Helm chart for cutcutfilm gateway
+type: application
+version: 1.0.1
+appVersion: 1.0.0
+keywords:
+  - cutcutfilm-gateway
+home: https://github.com/VidroX/cutcutfilm/tree/dev/helm
+maintainers:
+  - name: Vadym Karachenko
+    url: https://github.com/VidroX

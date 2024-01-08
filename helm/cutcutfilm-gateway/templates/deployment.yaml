@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.services.gateway.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.services.gateway.name }}
+  replicas: {{ .Values.services.gateway.replicas }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.services.gateway.name }}
+    spec:
+      containers:
+        - name: {{ .Values.services.gateway.name }}
+          image: {{ .Values.services.gateway.image }}
+          env:
+            - name: PORT
+              value: "{{ .Values.services.gateway.containerPort }}"
+            - name: DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.gateway.name }}-config
+                  key: debug
+            - name: NODE_ENV
+              value: "production"
+            - name: ENVIRONMENT_TYPE
+              value: "{{ .Values.environmentType }}"
+            - name: IDENTITY_SERVICE_LOCATION
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.gateway.name }}-config
+                  key: identity_service_location
+            - name: IDENTITY_SERVICE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.services.gateway.secretName }}
+                  key: identity-api-key
+          ports:
+            - containerPort: {{ .Values.services.gateway.containerPort }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,11 @@
+FROM node:20.5.1
+
+WORKDIR /app/cutcutfilm/services/gateway
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+CMD ["npm", "run", "dev"]

@@ -1,0 +1,10 @@
+{
+    "generalErrors": {
+        "notEnoughPermissions": "You don't have enough permissions to perform this action",
+        "internalError": "An internal error has occurred",
+        "invalidOrExpiredToken": "Invalid or expired user token",
+        "userRequired": "Please provide a user id to perform this action",
+        "invalidProvidedToken": "Provided token is invalid or expired",
+        "requestedDataNotFound": "Requested data not found"
+    }
+}

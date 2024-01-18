@@ -24,6 +24,11 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.services.user.name }}-config
                   key: debug
+            - name: SECURE_COOKIES
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.services.user.name }}-config
+                  key: secure_cookies
             - name: DATABASE_URI
               valueFrom:
                 configMapKeyRef:

@@ -18,8 +18,10 @@ import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import { rootDir } from './path_utils.js';
 import {
 	DEBUG,
+	ENABLE_CORS,
 	IDENTITY_SERVICE_API_KEY,
 	IDENTITY_SERVICE_LOCATION,
+	LISTEN_IP,
 	NODE_ENV,
 	PORT,
 } from './environment.js';
@@ -144,7 +146,7 @@ app.use(
 	'/gql',
 	cors({
 		origin: function (origin, callback) {
-			if (!origin) {
+			if (!origin || !ENABLE_CORS) {
 				return callback(null, true);
 			}
 
@@ -216,6 +218,11 @@ const getIdentityToken = async (token: string, acceptLanguage: string): Promise<
 	}
 };
 
-await new Promise<void>((resolve) => httpServer.listen({ port: PORT }, resolve));
-
-console.log(`🚀 Server ready at http://localhost:${PORT}/gql`);
+const listenIp = LISTEN_IP.trim();
+if (listenIp.length > 0) {
+	await new Promise<void>((resolve) => httpServer.listen({ port: PORT, host: listenIp }, resolve));
+	console.log(`🚀 Server ready at http://${listenIp}:${PORT}/gql`);
+} else {
+	await new Promise<void>((resolve) => httpServer.listen({ port: PORT }, resolve));
+	console.log(`🚀 Server ready at http://localhost:${PORT}/gql`);
+}

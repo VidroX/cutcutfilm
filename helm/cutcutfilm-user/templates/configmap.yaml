@@ -9,3 +9,4 @@ data:
   identity_service_location: "http://{{ .Values.services.identity.name }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.services.identity.port }}"
   identity_jwt_issuer: "{{ .Values.services.identity.jwtIssuer }}"
   jwt_issuer: "{{ .Values.services.user.jwtIssuer }}"
+  secure_cookies: "True"

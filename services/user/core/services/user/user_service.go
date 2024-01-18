@@ -446,12 +446,14 @@ func setTokenCookies(ctx context.Context, accessToken string, refreshToken strin
 	}
 
 	accessTokenClaims, tokenErr := jwt.ParseString(accessToken, jwt.WithVerify(false))
+	secureCookies := utils.UtilString(os.Getenv(environment.KeysSecureCookies)).IsEmpty() ||
+		strings.EqualFold(os.Getenv(environment.KeysSecureCookies), "True")
 
 	if tokenErr == nil && accessTokenClaims != nil {
 		http.SetCookie(writer, &http.Cookie{
 			HttpOnly: true,
 			Expires:  accessTokenClaims.Expiration(),
-			Secure:   true,
+			Secure:   secureCookies,
 			Name:     "at",
 			Value:    accessToken,
 			Path:     "/",
@@ -464,7 +466,7 @@ func setTokenCookies(ctx context.Context, accessToken string, refreshToken strin
 		http.SetCookie(writer, &http.Cookie{
 			HttpOnly: true,
 			Expires:  refreshTokenClaims.Expiration(),
-			Secure:   true,
+			Secure:   secureCookies,
 			Name:     "rt",
 			Value:    refreshToken,
 			Path:     "/",
@@ -479,10 +481,13 @@ func clearTokenCookies(ctx context.Context) {
 		return
 	}
 
+	secureCookies := utils.UtilString(os.Getenv(environment.KeysSecureCookies)).IsEmpty() ||
+		strings.EqualFold(os.Getenv(environment.KeysSecureCookies), "True")
+
 	http.SetCookie(writer, &http.Cookie{
 		HttpOnly: true,
 		MaxAge:   -1,
-		Secure:   true,
+		Secure:   secureCookies,
 		Name:     "at",
 		Value:    "",
 		Path:     "/",
@@ -491,7 +496,7 @@ func clearTokenCookies(ctx context.Context) {
 	http.SetCookie(writer, &http.Cookie{
 		HttpOnly: true,
 		MaxAge:   -1,
-		Secure:   true,
+		Secure:   secureCookies,
 		Name:     "rt",
 		Value:    "",
 		Path:     "/",

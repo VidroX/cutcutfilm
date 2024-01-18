@@ -2,6 +2,7 @@ package environment
 
 const KeysPort = "PORT"
 const KeysDebug = "DEBUG"
+const KeysSecureCookies = "SECURE_COOKIES"
 const KeysEnvironmentType = "ENVIRONMENT_TYPE"
 const KeysAppPath = "APP_PATH"
 const KeysDataPath = "DATA_PATH"

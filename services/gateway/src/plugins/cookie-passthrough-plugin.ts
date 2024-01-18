@@ -29,7 +29,4 @@ export default function CookiePassthroughPlugin<
 }
 
 export const parseServiceCookieString = (cookies: string): string[] =>
-	cookies
-		.split(' Secure, ')
-		.filter((c) => c != null && c.length > 0)
-		.map((c) => (c.endsWith('Secure') ? c : `${c} Secure`));
+	cookies.split(/,\s(?=[a-zA-Z])/gm).filter((c) => c != null && c.length > 0);
